@@ -28,7 +28,7 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'نقطة البيع والتحصيل (Mobile POS)',
+          'نقطة البيع والخزينة',
           style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
       ),
@@ -201,7 +201,7 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
               child: ElevatedButton.icon(
                 icon: const Icon(LucideIcons.printer, size: 20),
                 label: Text(
-                  'تأكيد الدفع وطباعة الإيصال الفوري',
+                  'تأكيد الدفع والطباعة',
                   style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 onPressed: () {

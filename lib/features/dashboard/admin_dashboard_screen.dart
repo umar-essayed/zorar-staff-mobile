@@ -103,7 +103,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 1.45,
+                    childAspectRatio: 1.22,
                     children: [
                       _buildKpiCard(
                         title: 'إيرادات اليوم',

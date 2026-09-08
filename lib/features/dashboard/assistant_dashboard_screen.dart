@@ -103,8 +103,8 @@ class AssistantDashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _buildActionTile(
                     context: context,
-                    title: 'محطة مسح الحضور',
-                    subtitle: 'كاميرا فائقة السرعة',
+                    title: 'تسجيل الحضور',
+                    subtitle: 'مسح QR سريع',
                     icon: LucideIcons.qrCode,
                     color: branding.primaryColor,
                     onTap: () {
@@ -121,8 +121,8 @@ class AssistantDashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _buildActionTile(
                     context: context,
-                    title: 'نقطة البيع والتحصيل',
-                    subtitle: 'سداد واشتراكات وملازم',
+                    title: 'نقطة البيع',
+                    subtitle: 'تحصيل وملازم',
                     icon: LucideIcons.receipt,
                     color: const Color(0xFF3B82F6),
                     onTap: () {
@@ -145,8 +145,8 @@ class AssistantDashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _buildActionTile(
                     context: context,
-                    title: 'تسجيل طالب جديد',
-                    subtitle: 'إصدار كارت فوري',
+                    title: 'طالب جديد',
+                    subtitle: 'إصدار بطاقة فورية',
                     icon: LucideIcons.userPlus,
                     color: const Color(0xFF8B5CF6),
                     onTap: () {
@@ -161,8 +161,8 @@ class AssistantDashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _buildActionTile(
                     context: context,
-                    title: 'حصة استثنائية',
-                    subtitle: 'فتح جلسة بديلة',
+                    title: 'حصة إضافية',
+                    subtitle: 'جلسة بديلة',
                     icon: LucideIcons.calendarPlus,
                     color: const Color(0xFFF59E0B),
                     onTap: () {

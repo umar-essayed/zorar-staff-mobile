@@ -196,7 +196,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         icon: const Icon(LucideIcons.checkSquare, size: 18),
-                        label: const Text('دخول غرفة الحصة ورصد الدرجات والواجب'),
+                        label: const Text('إدارة الحصة والدرجات'),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -302,14 +302,14 @@ class TeacherDashboardScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'كشف حساب أرباحي وعمولات الحصص',
+                            'كشف الأرباح والعمولات',
                             style: GoogleFonts.cairo(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
                           Text(
-                            'عرض الحصص المنعقدة، المبالغ المسددة، وتاريخ التسويات',
+                            'عرض الحصص والمبالغ المسددة والتسويات',
                             style: GoogleFonts.cairo(
                               fontSize: 11.5,
                               color: Colors.grey,

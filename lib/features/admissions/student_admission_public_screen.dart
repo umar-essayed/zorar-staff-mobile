@@ -230,7 +230,7 @@ class _StudentAdmissionPublicScreenState
             child: ElevatedButton.icon(
               icon: const Icon(LucideIcons.send, size: 18),
               label: Text(
-                'إرسال طلب الحجز وتأكيد التقديم',
+                'إرسال طلب الحجز',
                 style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
               ),
               onPressed: _submitApplication,

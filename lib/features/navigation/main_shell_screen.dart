@@ -183,30 +183,9 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           ],
         ),
         actions: [
-          // Quick Role Switcher Action in AppBar
           PopupMenuButton<String>(
-            tooltip: 'تبديل دور المستخدم للتجربة',
-            icon: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: branding.primaryColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.users, size: 14, color: branding.primaryColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    'تبديل الدور',
-                    style: GoogleFonts.cairo(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: branding.primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            tooltip: 'تبديل الدور',
+            icon: Icon(LucideIcons.users, size: 20, color: branding.primaryColor),
             onSelected: (role) {
               SoundService.successFeedback();
               ref.read(authProvider.notifier).switchDemoRole(role);
@@ -215,15 +194,15 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             itemBuilder: (ctx) => [
               PopupMenuItem(
                 value: AppConstants.roleOwner,
-                child: Text('👑 الإدارة وصاحب السنتر', style: GoogleFonts.cairo()),
+                child: Text('👑 الإدارة والمالك', style: GoogleFonts.cairo(fontSize: 13)),
               ),
               PopupMenuItem(
                 value: AppConstants.roleAssistant,
-                child: Text('💼 المساعد والكاشير', style: GoogleFonts.cairo()),
+                child: Text('💼 المساعد والكاشير', style: GoogleFonts.cairo(fontSize: 13)),
               ),
               PopupMenuItem(
                 value: AppConstants.roleTeacher,
-                child: Text('👨‍🏫 المعلم وقاعة الحصة', style: GoogleFonts.cairo()),
+                child: Text('👨‍🏫 المعلم والقاعة', style: GoogleFonts.cairo(fontSize: 13)),
               ),
             ],
           ),
@@ -232,17 +211,17 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               branding.isDarkMode ? LucideIcons.sun : LucideIcons.moon,
               size: 20,
             ),
-            tooltip: 'تبديل الوضع الليلي',
+            tooltip: 'تبديل المظهر',
             onPressed: () {
-              SoundService.successFeedback();
+              SoundService.lightImpact();
               ref.read(brandingProvider.notifier).toggleDarkMode();
             },
           ),
           IconButton(
-            icon: const Icon(LucideIcons.lock, size: 20),
-            tooltip: 'قفل الشاشة السريع',
+            icon: const Icon(LucideIcons.lock, size: 19),
+            tooltip: 'قفل الخزينة',
             onPressed: () {
-              SecurityService.showSecurityPinDialog(context, title: 'قفل الخزينة والشاشة');
+              SecurityService.showSecurityPinDialog(context, title: 'قفل الخزينة');
             },
           ),
         ],

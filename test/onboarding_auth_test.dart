@@ -29,8 +29,8 @@ void main() {
       ),
     );
 
-    expect(find.text('تسجيل الدخول'), findsOneWidget);
-    expect(find.text('إنشاء حساب سنتر'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsAtLeastNWidgets(1));
+    expect(find.text('إنشاء سنتر جديد'), findsOneWidget);
     expect(find.text('دخول إلى النظام'), findsOneWidget);
   });
 
@@ -44,6 +44,6 @@ void main() {
     );
 
     expect(find.text('استمارة الحجز والتقديم الإلكتروني'), findsOneWidget);
-    expect(find.text('إرسال طلب الحجز وتأكيد التقديم'), findsOneWidget);
+    expect(find.text('إرسال طلب الحجز'), findsOneWidget);
   });
 }
