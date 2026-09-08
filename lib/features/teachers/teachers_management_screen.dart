@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
+import '../../core/services/branding_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
@@ -59,7 +60,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                   obscureText: obscure,
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور الجديدة',
-                    prefixIcon: const Icon(LucideIcons.lock, size: 18),
+                    prefixIcon: Icon(LucideIcons.lock, size: 18),
                     suffixIcon: IconButton(
                       icon: Icon(obscure ? LucideIcons.eyeOff : LucideIcons.eye, size: 18),
                       onPressed: () => setDialogState(() => obscure = !obscure),
@@ -83,7 +84,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                 ),
                 icon: isSubmitting
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.check, size: 16),
+                    : Icon(LucideIcons.check, size: 16),
                 label: Text('تعيين كلمة المرور', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 onPressed: isSubmitting
                     ? null
@@ -135,7 +136,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(LucideIcons.alertTriangle, color: Colors.redAccent, size: 22),
+            Icon(LucideIcons.alertTriangle, color: Colors.redAccent, size: 22),
             const SizedBox(width: 8),
             Text('تأكيد حذف المعلم', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
@@ -195,7 +196,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
           ),
           actions: [
             IconButton(
-              icon: const Icon(LucideIcons.refreshCw, size: 18),
+              icon: Icon(LucideIcons.refreshCw, size: 18),
               tooltip: 'تحديث البيانات',
               onPressed: () => ref.invalidate(liveTeachersProvider),
             ),
@@ -204,7 +205,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: branding.primaryColor,
           foregroundColor: Colors.white,
-          icon: const Icon(LucideIcons.userPlus),
+          icon: Icon(LucideIcons.userPlus),
           label: Text('إضافة معلم جديد', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
           onPressed: () async {
             final res = await showDialog<bool>(
@@ -228,7 +229,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                   TextField(
                     decoration: InputDecoration(
                       hintText: 'بحث باسم المعلم أو رقم الهاتف...',
-                      prefixIcon: const Icon(LucideIcons.search, size: 18),
+                      prefixIcon: Icon(LucideIcons.search, size: 18),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -342,7 +343,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(LucideIcons.alertCircle, color: Colors.red, size: 48),
+                        Icon(LucideIcons.alertCircle, color: Colors.red, size: 48),
                         const SizedBox(height: 12),
                         Text('فشل تحميل المعلمين: $e', textAlign: TextAlign.center, style: GoogleFonts.cairo()),
                         const SizedBox(height: 12),
@@ -383,7 +384,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
     );
   }
 
-  Widget _buildTeacherCard(Map<String, dynamic> t, BrandingState branding) {
+  Widget _buildTeacherCard(Map<String, dynamic> t, BrandingModel branding) {
     final name = t['name'] ?? 'معلم';
     final phone = t['phone'] ?? '';
     final subject = t['subject']?['name'] ?? 'عام';
@@ -456,7 +457,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.key, size: 11, color: Color(0xFF10B981)),
+                                  Icon(LucideIcons.key, size: 11, color: Color(0xFF10B981)),
                                   const SizedBox(width: 4),
                                   Text('حساب مفعل', style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
                                 ],
@@ -551,7 +552,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    icon: const Icon(LucideIcons.userCheck, size: 15),
+                    icon: Icon(LucideIcons.userCheck, size: 15),
                     label: Text('البروفايل والطلاب', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
                     onPressed: () {
                       Navigator.push(
@@ -565,12 +566,12 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                 ),
                 const SizedBox(width: 6),
                 IconButton(
-                  icon: const Icon(LucideIcons.phone, size: 18, color: Colors.blue),
+                  icon: Icon(LucideIcons.phone, size: 18, color: Colors.blue),
                   tooltip: 'اتصال هاتف',
                   onPressed: () => launchUrl(Uri.parse('tel:$phone')),
                 ),
                 IconButton(
-                  icon: const Icon(LucideIcons.messageCircle, size: 18, color: Color(0xFF10B981)),
+                  icon: Icon(LucideIcons.messageCircle, size: 18, color: Color(0xFF10B981)),
                   tooltip: 'واتساب',
                   onPressed: () {
                     WhatsAppService.launchWhatsApp(
@@ -581,12 +582,12 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                   },
                 ),
                 IconButton(
-                  icon: const Icon(LucideIcons.key, size: 18, color: Colors.amber),
+                  icon: Icon(LucideIcons.key, size: 18, color: Colors.amber),
                   tooltip: 'إدارة كلمة المرور',
                   onPressed: () => _openResetPasswordDialog(t),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(LucideIcons.moreVertical, size: 18),
+                  icon: Icon(LucideIcons.moreVertical, size: 18),
                   onSelected: (action) async {
                     if (action == 'edit') {
                       final updated = await showDialog<bool>(
@@ -603,7 +604,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                       value: 'edit',
                       child: Row(
                         children: [
-                          const Icon(LucideIcons.edit, size: 16),
+                          Icon(LucideIcons.edit, size: 16),
                           const SizedBox(width: 8),
                           Text('تعديل البيانات', style: GoogleFonts.cairo()),
                         ],
@@ -613,7 +614,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                       value: 'delete',
                       child: Row(
                         children: [
-                          const Icon(LucideIcons.trash2, size: 16, color: Colors.red),
+                          Icon(LucideIcons.trash2, size: 16, color: Colors.red),
                           const SizedBox(width: 8),
                           Text('حذف المعلم', style: GoogleFonts.cairo(color: Colors.red)),
                         ],

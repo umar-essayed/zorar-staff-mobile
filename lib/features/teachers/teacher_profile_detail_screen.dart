@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
+import '../../core/services/branding_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
@@ -96,7 +97,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                   obscureText: obscure,
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور الجديدة',
-                    prefixIcon: const Icon(LucideIcons.lock, size: 18),
+                    prefixIcon: Icon(LucideIcons.lock, size: 18),
                     suffixIcon: IconButton(
                       icon: Icon(obscure ? LucideIcons.eyeOff : LucideIcons.eye, size: 18),
                       onPressed: () => setDialogState(() => obscure = !obscure),
@@ -120,7 +121,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                 ),
                 icon: isSubmitting
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.check, size: 16),
+                    : Icon(LucideIcons.check, size: 16),
                 label: Text('حفظ التعيين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 onPressed: isSubmitting
                     ? null
@@ -204,7 +205,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          icon: const Icon(LucideIcons.calendar, size: 16),
+                          icon: Icon(LucideIcons.calendar, size: 16),
                           label: Text(
                             'من: ${start.toString().split(' ').first}',
                             style: GoogleFonts.cairo(fontSize: 12),
@@ -223,7 +224,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          icon: const Icon(LucideIcons.calendar, size: 16),
+                          icon: Icon(LucideIcons.calendar, size: 16),
                           label: Text(
                             'إلى: ${end.toString().split(' ').first}',
                             style: GoogleFonts.cairo(fontSize: 12),
@@ -248,7 +249,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'الخصومات (قاعات / ملازم / سلف) ج.م',
-                      prefixIcon: const Icon(LucideIcons.scissors, size: 18),
+                      prefixIcon: Icon(LucideIcons.scissors, size: 18),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       isDense: true,
                     ),
@@ -259,7 +260,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                     controller: notesCtrl,
                     decoration: InputDecoration(
                       labelText: 'ملاحظات التسوية',
-                      prefixIcon: const Icon(LucideIcons.fileText, size: 18),
+                      prefixIcon: Icon(LucideIcons.fileText, size: 18),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       isDense: true,
                     ),
@@ -280,7 +281,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                 ),
                 icon: isSubmitting
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.checkCheck, size: 16),
+                    : Icon(LucideIcons.checkCheck, size: 16),
                 label: Text('تأكيد وحساب التسوية', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 onPressed: isSubmitting
                     ? null
@@ -339,7 +340,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
           ),
           actions: [
             IconButton(
-              icon: const Icon(LucideIcons.edit, size: 20),
+              icon: Icon(LucideIcons.edit, size: 20),
               tooltip: 'تعديل المعلم',
               onPressed: _teacher == null
                   ? null
@@ -352,7 +353,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                     },
             ),
             IconButton(
-              icon: const Icon(LucideIcons.refreshCw, size: 18),
+              icon: Icon(LucideIcons.refreshCw, size: 18),
               tooltip: 'تحديث',
               onPressed: _loadTeacherData,
             ),
@@ -367,7 +368,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(LucideIcons.alertCircle, size: 50, color: Colors.red),
+                          Icon(LucideIcons.alertCircle, size: 50, color: Colors.red),
                           const SizedBox(height: 12),
                           Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.cairo()),
                           const SizedBox(height: 16),
@@ -419,7 +420,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
     );
   }
 
-  Widget _buildHeader(BrandingState branding) {
+  Widget _buildHeader(BrandingModel branding) {
     final t = _teacher!;
     final name = t['name'] ?? 'معلم';
     final phone = t['phone'] ?? '';
@@ -468,7 +469,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(LucideIcons.key, size: 12, color: Color(0xFF10B981)),
+                            Icon(LucideIcons.key, size: 12, color: Color(0xFF10B981)),
                             const SizedBox(width: 4),
                             Text(
                               'حساب دخول نشط',
@@ -512,7 +513,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(LucideIcons.phoneCall, size: 14, color: Colors.blue),
+                            Icon(LucideIcons.phoneCall, size: 14, color: Colors.blue),
                             const SizedBox(width: 6),
                             Text('اتصال', style: GoogleFonts.cairo(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold)),
                           ],
@@ -538,7 +539,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(LucideIcons.messageCircle, size: 14, color: Color(0xFF10B981)),
+                            Icon(LucideIcons.messageCircle, size: 14, color: Color(0xFF10B981)),
                             const SizedBox(width: 6),
                             Text('واتساب', style: GoogleFonts.cairo(fontSize: 12, color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
                           ],
@@ -574,7 +575,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
   }
 
   // TAB 1: Groups & Students
-  Widget _buildGroupsTab(BrandingState branding) {
+  Widget _buildGroupsTab(BrandingModel branding) {
     final groups = (_teacher?['groups'] as List<dynamic>?) ?? [];
 
     if (groups.isEmpty) {
@@ -677,7 +678,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                               ),
                               if (sPhone.isNotEmpty)
                                 IconButton(
-                                  icon: const Icon(LucideIcons.messageCircle, size: 16, color: Color(0xFF10B981)),
+                                  icon: Icon(LucideIcons.messageCircle, size: 16, color: Color(0xFF10B981)),
                                   tooltip: 'واتساب',
                                   onPressed: () {
                                     WhatsAppService.launchWhatsApp(
@@ -702,7 +703,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
   }
 
   // TAB 2: Online Courses
-  Widget _buildCoursesTab(BrandingState branding) {
+  Widget _buildCoursesTab(BrandingModel branding) {
     final courses = (_teacher?['courses'] as List<dynamic>?) ?? [];
 
     if (courses.isEmpty) {
@@ -773,7 +774,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
   }
 
   // TAB 3: Payouts & Financials
-  Widget _buildPayoutsTab(BrandingState branding) {
+  Widget _buildPayoutsTab(BrandingModel branding) {
     final t = _teacher!;
     final payouts = (t['payouts'] as List<dynamic>?) ?? [];
     final commType = t['commissionType'] ?? 'PERCENTAGE';
@@ -855,7 +856,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    icon: const Icon(LucideIcons.badgePlus, size: 18),
+                    icon: Icon(LucideIcons.badgePlus, size: 18),
                     label: Text('حساب وإجراء تسوية أرباح جديدة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                     onPressed: _openNewPayoutDialog,
                   ),
@@ -903,7 +904,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                       children: [
                         Row(
                           children: [
-                            const Icon(LucideIcons.receipt, size: 16, color: Color(0xFF10B981)),
+                            Icon(LucideIcons.receipt, size: 16, color: Color(0xFF10B981)),
                             const SizedBox(width: 6),
                             Text('تسوية بتاريخ: $paidAt', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
                           ],
@@ -941,7 +942,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
   }
 
   // TAB 4: Security & Login Account
-  Widget _buildSecurityTab(BrandingState branding) {
+  Widget _buildSecurityTab(BrandingModel branding) {
     final t = _teacher!;
     final user = t['user'] as Map<String, dynamic>?;
     final hasUser = user != null;
@@ -1029,7 +1030,7 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    icon: const Icon(LucideIcons.key, size: 18),
+                    icon: Icon(LucideIcons.key, size: 18),
                     label: Text(
                       hasUser ? 'تغيير أو إعادة تعيين كلمة المرور' : 'إنشاء حساب وتعيين كلمة المرور',
                       style: GoogleFonts.cairo(fontWeight: FontWeight.bold),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
@@ -261,7 +261,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(LucideIcons.x, size: 20),
+                      icon: Icon(LucideIcons.x, size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -308,7 +308,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                                           height: 14,
                                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                         )
-                                      : const Icon(LucideIcons.camera, size: 14, color: Colors.white),
+                                      : Icon(LucideIcons.camera, size: 14, color: Colors.white),
                                 ),
                               ),
                             ],
@@ -330,7 +330,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                                 controller: _nameCtrl,
                                 decoration: InputDecoration(
                                   labelText: 'اسم المدرس *',
-                                  prefixIcon: const Icon(LucideIcons.user, size: 18),
+                                  prefixIcon: Icon(LucideIcons.user, size: 18),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                   isDense: true,
                                 ),
@@ -344,7 +344,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                                 keyboardType: TextInputType.phone,
                                 decoration: InputDecoration(
                                   labelText: 'رقم هاتف المدرس *',
-                                  prefixIcon: const Icon(LucideIcons.phone, size: 18),
+                                  prefixIcon: Icon(LucideIcons.phone, size: 18),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                   isDense: true,
                                 ),
@@ -371,7 +371,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                               isExpanded: true,
                               decoration: InputDecoration(
                                 labelText: 'المادة الدراسية / التخصص',
-                                prefixIcon: const Icon(LucideIcons.bookOpen, size: 18),
+                                prefixIcon: Icon(LucideIcons.bookOpen, size: 18),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                                 isDense: true,
                               ),
@@ -434,7 +434,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                           decoration: InputDecoration(
                             labelText: 'نبذة تعريفية أو تفاصيل إضافية عن المعلم',
                             hintText: 'مثال: معلم أول الفيزياء للثانوية العامة والبكالوريا بالسنتر',
-                            prefixIcon: const Icon(LucideIcons.fileText, size: 18),
+                            prefixIcon: Icon(LucideIcons.fileText, size: 18),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             isDense: true,
                           ),
@@ -549,7 +549,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                                   obscureText: _obscurePassword,
                                   decoration: InputDecoration(
                                     labelText: isEdit ? 'تغيير كلمة المرور (اتركه فارغاً للإبقاء على الحالية)' : 'كلمة المرور للدخول *',
-                                    prefixIcon: const Icon(LucideIcons.lock, size: 18),
+                                    prefixIcon: Icon(LucideIcons.lock, size: 18),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
@@ -602,7 +602,7 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Icon(LucideIcons.check, size: 18),
+                          : Icon(LucideIcons.check, size: 18),
                       label: Text(
                         isEdit ? 'حفظ التعديلات' : 'إضافة المعلم',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
