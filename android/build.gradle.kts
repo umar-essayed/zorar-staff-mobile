@@ -17,17 +17,11 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
-    afterEvaluate {
-        val android = project.extensions.findByName("android")
-        if (android != null) {
-            try {
-                val method = android.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
-                method.invoke(android, 36)
-            } catch (e: Exception) {}
-        }
-        tasks.matching { it.name.contains("checkAarMetadata", ignoreCase = true) }.configureEach {
-            enabled = false
-        }
+}
+
+subprojects {
+    tasks.matching { it.name.contains("AarMetadata", ignoreCase = true) }.configureEach {
+        enabled = false
     }
 }
 

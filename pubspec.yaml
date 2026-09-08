@@ -47,7 +47,7 @@ dependencies:
   lucide_icons_flutter: ^3.1.19
   flutter_dynamic_icon_plus: ^1.4.1
   image_picker: ^1.1.2
-  file_picker: ^8.1.4
+  file_picker: ^12.2.0
 
 dev_dependencies:
   flutter_test:
