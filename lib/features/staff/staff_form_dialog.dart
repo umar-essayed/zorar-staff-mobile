@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
