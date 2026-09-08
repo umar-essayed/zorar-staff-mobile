@@ -52,11 +52,6 @@ final liveSessionAttendanceProvider = FutureProvider.autoDispose.family<List<Map
   return await EduApiService().getGroupAttendance(arg.groupId, sessionId: arg.sessionId);
 });
 
-// Teachers Live Provider
-final liveTeachersProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return await EduApiService().getTeachers();
-});
-
 // 9. Finance Overview & Analytics Provider
 final liveFinanceOverviewProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   return await EduApiService().getFinanceOverview();
