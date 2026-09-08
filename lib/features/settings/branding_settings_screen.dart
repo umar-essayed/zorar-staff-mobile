@@ -477,6 +477,14 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                     );
                   }
                 },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _openColorPicker(BuildContext context, {required bool isPrimary}) {
     final branding = ref.read(brandingProvider);
     Color currentColor = isPrimary ? branding.primaryColor : branding.secondaryColor;

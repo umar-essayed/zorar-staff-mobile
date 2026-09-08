@@ -21,7 +21,7 @@ void main() {
       ),
     );
 
-    expect(find.text('زُرار برو (Zorar Pro)'), findsOneWidget);
+    expect(find.text('زُرار كود (Zorar Code)'), findsOneWidget);
     expect(find.text('تخطي'), findsOneWidget);
     expect(find.text('التالي'), findsOneWidget);
   });
