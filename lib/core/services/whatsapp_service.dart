@@ -47,6 +47,9 @@ class WhatsAppService {
 يرجى التواصل مع إدارة السنتر للمتابعة.
 ''';
 
+    _copyAndNotify(context, message, 'تم نسخ تنبيه الغياب وجاهز للمشاركة عبر واتساب');
+  }
+
   static void sendCustomMessage(
     BuildContext context, {
     required String phone,
