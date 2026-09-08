@@ -377,7 +377,7 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
                       // Transfer Account Banner
                       Builder(
                         builder: (ctx) {
-                          final transferAccount = pricing['transferAccount'] as Map<String, dynamic>? ?? {};
+                          final transferAccount = (pricingAsync.value?['transferAccount'] ?? pricingData['transferAccount']) as Map<String, dynamic>? ?? {};
                           final transferPhone = transferAccount['phone']?.toString() ?? '01553442304';
 
                           return Container(
