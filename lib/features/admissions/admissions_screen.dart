@@ -43,7 +43,7 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
               DropdownButtonFormField<String>(
                 value: selectedYearId,
                 isExpanded: true,
-                items: years.map((y) => DropdownMenuItem(value: y['id'].toString(), child: Text(y['name'] ?? ''))).toList(),
+                items: years.map((y) => DropdownMenuItem<String>(value: y['id'].toString(), child: Text(y['name'] ?? ''))).toList(),
                 onChanged: (v) => setDialogState(() => selectedYearId = v),
               ),
               const SizedBox(height: 10),
@@ -51,7 +51,7 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
               DropdownButtonFormField<String>(
                 value: selectedGroupId,
                 isExpanded: true,
-                items: groups.map((g) => DropdownMenuItem(value: g['id'].toString(), child: Text(g['name'] ?? ''))).toList(),
+                items: groups.map((g) => DropdownMenuItem<String>(value: g['id'].toString(), child: Text(g['name'] ?? ''))).toList(),
                 onChanged: (v) => setDialogState(() => selectedGroupId = v),
               ),
             ],

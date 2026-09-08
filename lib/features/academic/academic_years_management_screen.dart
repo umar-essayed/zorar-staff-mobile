@@ -22,7 +22,7 @@ class _AcademicYearsManagementScreenState extends ConsumerState<AcademicYearsMan
 
     await showModalBottomSheet(
       context: context,
-      isScrollable: true,
+      isScrollControlled: true,
       backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(

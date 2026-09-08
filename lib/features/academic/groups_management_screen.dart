@@ -30,8 +30,8 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
     final subjectsAsync = ref.watch(liveSubjectsProvider);
     final teachersAsync = ref.watch(liveTeachersProvider);
 
-    final subjectsList = ['الكل', ...(subjectsAsync.value?.map((s) => s['name']?.toString() ?? '') ?? [])];
-    final teachersList = ['الكل', ...(teachersAsync.value?.map((t) => t['name']?.toString() ?? '') ?? [])];
+    final List<String> subjectsList = ['الكل', ...(subjectsAsync.value?.map((s) => s['name']?.toString() ?? '').where((s) => s.isNotEmpty) ?? [])];
+    final List<String> teachersList = ['الكل', ...(teachersAsync.value?.map((t) => t['name']?.toString() ?? '').where((t) => t.isNotEmpty) ?? [])];
 
     return Scaffold(
       appBar: AppBar(
@@ -93,7 +93,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        items: subjectsList.map((s) => DropdownMenuItem(value: s, child: Text(s, style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis))).toList(),
+                        items: subjectsList.map((s) => DropdownMenuItem<String>(value: s, child: Text(s, style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (val) => setState(() => _selectedSubjectFilter = val ?? 'الكل'),
                       ),
                     ),
@@ -109,7 +109,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        items: teachersList.map((t) => DropdownMenuItem(value: t, child: Text(t, style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis))).toList(),
+                        items: teachersList.map((t) => DropdownMenuItem<String>(value: t, child: Text(t, style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (val) => setState(() => _selectedTeacherFilter = val ?? 'الكل'),
                       ),
                     ),

@@ -341,7 +341,7 @@ class _GroupFormDialogState extends ConsumerState<GroupFormDialog> {
               value: _selectedYearId,
               isExpanded: true,
               decoration: const InputDecoration(prefixIcon: Icon(LucideIcons.graduationCap, size: 18), isDense: true),
-              items: years.map((y) => DropdownMenuItem(value: y['id'].toString(), child: Text(y['name'] ?? ''))).toList(),
+              items: years.map((y) => DropdownMenuItem<String>(value: y['id'].toString(), child: Text(y['name'] ?? ''))).toList(),
               onChanged: (v) => setState(() => _selectedYearId = v),
             );
           },
@@ -359,7 +359,7 @@ class _GroupFormDialogState extends ConsumerState<GroupFormDialog> {
               value: _selectedSubjectId,
               isExpanded: true,
               decoration: const InputDecoration(prefixIcon: Icon(LucideIcons.bookOpen, size: 18), isDense: true),
-              items: subjects.map((s) => DropdownMenuItem(value: s['id'].toString(), child: Text(s['name'] ?? ''))).toList(),
+              items: subjects.map((s) => DropdownMenuItem<String>(value: s['id'].toString(), child: Text(s['name'] ?? ''))).toList(),
               onChanged: (v) => setState(() => _selectedSubjectId = v),
             );
           },
@@ -377,7 +377,7 @@ class _GroupFormDialogState extends ConsumerState<GroupFormDialog> {
               isExpanded: true,
               hint: const Text('اختر المعلم...'),
               decoration: const InputDecoration(prefixIcon: Icon(LucideIcons.userCheck, size: 18), isDense: true),
-              items: teachers.map((t) => DropdownMenuItem(value: t['id'].toString(), child: Text(t['name'] ?? ''))).toList(),
+              items: teachers.map((t) => DropdownMenuItem<String>(value: t['id'].toString(), child: Text(t['name'] ?? ''))).toList(),
               onChanged: (v) => setState(() => _selectedTeacherId = v),
             );
           },

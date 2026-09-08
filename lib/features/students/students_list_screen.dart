@@ -13,7 +13,8 @@ import 'student_detail_screen.dart';
 import 'student_form_dialog.dart';
 
 class StudentsListScreen extends ConsumerStatefulWidget {
-  const StudentsListScreen({super.key});
+  final String? initialGroupId;
+  const StudentsListScreen({super.key, this.initialGroupId});
 
   @override
   ConsumerState<StudentsListScreen> createState() => _StudentsListScreenState();
@@ -124,6 +125,12 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                 data: (students) {
                   // Filter by status if applied
                   final filtered = students.where((s) {
+                    if (widget.initialGroupId != null && widget.initialGroupId!.isNotEmpty) {
+                      final sGroupId = s['groupId']?.toString() ?? s['group']?['id']?.toString();
+                      if (sGroupId != null && sGroupId != widget.initialGroupId) {
+                        return false;
+                      }
+                    }
                     if (_statusFilter == 'ALL') return true;
                     final balance = parseDouble(s['walletBalance']);
                     if (_statusFilter == 'LATE' && balance < 0) return true;
