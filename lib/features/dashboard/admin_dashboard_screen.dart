@@ -358,8 +358,9 @@ class AdminDashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildKpiCard({
     required String title,

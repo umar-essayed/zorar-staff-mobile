@@ -465,19 +465,6 @@ class EduApiService {
   // ==========================================
   // 9. Teachers & Settlements APIs
   // ==========================================
-  Future<List<Map<String, dynamic>>> getTeachers() async {
-    try {
-      final res = await _dio.get('/teachers');
-      if (res.data is List) {
-        return List<Map<String, dynamic>>.from(res.data);
-      }
-      return [];
-    } catch (e) {
-      debugPrint('Error getTeachers: $e');
-      return [];
-    }
-  }
-
   Future<Map<String, dynamic>?> calculateTeacherPayout(Map<String, dynamic> data) async {
     try {
       final res = await _dio.post('/teachers/payouts/calculate', data: data);
