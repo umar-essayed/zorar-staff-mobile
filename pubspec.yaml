@@ -46,6 +46,7 @@ dependencies:
   mobile_scanner: ^7.4.0
   lucide_icons_flutter: ^3.1.19
   flutter_dynamic_icon_plus: ^1.4.1
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

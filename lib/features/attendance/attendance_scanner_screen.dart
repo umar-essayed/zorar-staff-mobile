@@ -3,237 +3,135 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
+import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
 import 'emergency_session_dialog.dart';
 
 class AttendanceScannerScreen extends ConsumerStatefulWidget {
-  const AttendanceScannerScreen({super.key});
+  final String? initialGroupId;
+  const AttendanceScannerScreen({super.key, this.initialGroupId});
 
   @override
   ConsumerState<AttendanceScannerScreen> createState() => _AttendanceScannerScreenState();
 }
 
 class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScreen> {
-  final MobileScannerController _controller = MobileScannerController();
+  final MobileScannerController _controller = MobileScannerController(
+    formats: const [
+      BarcodeFormat.code128,
+      BarcodeFormat.code39,
+      BarcodeFormat.code93,
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+      BarcodeFormat.qrCode,
+    ],
+  );
+
+  String? _selectedYearId;
+  String? _selectedSubjectId;
+  String? _selectedGroupId;
+
+  final _manualCodeCtrl = TextEditingController();
   bool _isProcessing = false;
   bool _torchOn = false;
-  String currentGroup = '3ث لغة عربية (أ) - الحصة 5';
+  String? _lastScanFeedback;
+  Color? _feedbackColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedGroupId = widget.initialGroupId;
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _manualCodeCtrl.dispose();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
-    if (_isProcessing) return;
+  void _onBarcodeDetect(BarcodeCapture capture) {
+    if (_isProcessing || _selectedGroupId == null) return;
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
 
     final rawValue = barcodes.first.rawValue;
-    if (rawValue != null && rawValue.isNotEmpty) {
-      _processStudentScan(rawValue);
+    if (rawValue != null && rawValue.trim().isNotEmpty) {
+      _processAttendance(rawValue.trim());
     }
   }
 
-  void _processStudentScan(String code) {
-    setState(() => _isProcessing = true);
-
-    // Mock scan evaluation
-    if (code.contains('1004') || code.contains('STU-1') || code.contains('010')) {
-      SoundService.successFeedback();
-      _showScanResultModal(
-        status: 'SUCCESS',
-        studentName: 'محمود عبد الرازق حسن',
-        studentCode: code.toUpperCase(),
-        seatNumber: 'مقعد 14 (قاعة 1)',
-        message: 'تم تسجيل الحضور بنجاح • الاشتراك مسدد بالكامل ✅',
-      );
-    } else if (code.contains('99') || code.contains('WARN')) {
-      SoundService.warningFeedback();
-      _showScanResultModal(
-        status: 'WARNING',
-        studentName: 'سلمى إبراهيم خليل',
-        studentCode: code.toUpperCase(),
-        seatNumber: 'مقعد 22 (قاعة 1)',
-        message: 'تم تسجيل الحضور • تنبيه: في فترة السماح ويجب تجديد الاشتراك ⚠️',
-      );
-    } else {
-      SoundService.errorFeedback();
-      _showScanResultModal(
-        status: 'ERROR',
-        studentName: 'طالب غير مسجل أو كود غير صالح',
-        studentCode: code.toUpperCase(),
-        seatNumber: 'غير مخصص',
-        message: 'تنبيه: الطالب غير مقيد في هذه المجموعة أو تم مسح كود خاطئ ❌',
-      );
-    }
-  }
-
-  void _showScanResultModal({
-    required String status,
-    required String studentName,
-    required String studentCode,
-    required String seatNumber,
-    required String message,
-  }) {
-    Color color;
-    IconData icon;
-    switch (status) {
-      case 'SUCCESS':
-        color = const Color(0xFF10B981);
-        icon = LucideIcons.checkCircle2;
-        break;
-      case 'WARNING':
-        color = const Color(0xFFF59E0B);
-        icon = LucideIcons.alertTriangle;
-        break;
-      default:
-        color = const Color(0xFFEF4444);
-        icon = LucideIcons.xCircle;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isDismissible: true,
-      backgroundColor: Theme.of(context).cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Icon(icon, color: color, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                studentName,
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$studentCode • $seatNumber',
-                style: GoogleFonts.cairo(
-                  fontSize: 13,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: color.withOpacity(0.3)),
-                ),
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: color),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    setState(() => _isProcessing = false);
-                  },
-                  child: const Text('متابعة مسح الطالب التالي'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    ).then((_) {
-      if (mounted) setState(() => _isProcessing = false);
-    });
-  }
-
-  void _showManualSearchDialog() {
-    final searchCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('تسجيل حضور يدوي بكود الطالب', style: GoogleFonts.cairo(fontSize: 15)),
-        content: TextField(
-          controller: searchCtrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'أدخل كود الطالب (مثال: STU-1004)',
-            prefixIcon: Icon(LucideIcons.hash),
-          ),
+  Future<void> _processAttendance(String code) async {
+    if (_selectedGroupId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى تحديد المجموعة أولاً قبل المسح', style: GoogleFonts.cairo()),
+          backgroundColor: const Color(0xFFEF4444),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final code = searchCtrl.text.trim();
-              Navigator.pop(ctx);
-              if (code.isNotEmpty) {
-                _processStudentScan(code);
-              }
-            },
-            child: const Text('تسجيل الحضور'),
-          ),
-        ],
-      ),
-    );
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    SoundService.lightImpact();
+
+    try {
+      final res = await EduApiService().scanAttendance(
+        identifier: code,
+        groupId: _selectedGroupId!,
+      );
+
+      SoundService.successFeedback();
+      final student = res['student'] ?? {};
+      final studentName = student['name'] ?? 'طالب مسجل';
+      final status = res['status'] ?? 'PRESENT';
+      final msg = res['message'] ?? 'تم تسجيل الحضور بنجاح ✅';
+
+      setState(() {
+        _lastScanFeedback = '$studentName • $msg';
+        _feedbackColor = status == 'LATE' ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+      });
+
+      // Refresh group attendance list
+      ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
+    } catch (e) {
+      SoundService.errorFeedback();
+      setState(() {
+        _lastScanFeedback = 'فشل التسجيل: الكود غير صحيح أو الطالب غير مقيد بالمجموعة ❌';
+        _feedbackColor = const Color(0xFFEF4444);
+      });
+    } finally {
+      _manualCodeCtrl.clear();
+      await Future.delayed(const Duration(milliseconds: 1400));
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final yearsAsync = ref.watch(liveAcademicYearsProvider);
+    final subjectsAsync = ref.watch(liveSubjectsProvider);
+    final groupsAsync = ref.watch(liveGroupsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ماسح الحضور فائق السرعة',
-              style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            Text(
-              currentGroup,
-              style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.white70),
-            ),
-          ],
+        title: Text(
+          'محطة تسجيل الحضور والباركود',
+          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             icon: Icon(
               _torchOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
-              color: _torchOn ? Colors.yellow : Colors.white,
+              color: _torchOn ? Colors.yellow : null,
             ),
             tooltip: 'تشغيل الفلاش',
             onPressed: () async {
@@ -243,7 +141,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
           ),
           IconButton(
             icon: const Icon(LucideIcons.calendarPlus, color: Color(0xFFF59E0B)),
-            tooltip: 'فتح حصة استثنائية',
+            tooltip: 'فتح جلسة استثنائية',
             onPressed: () {
               showDialog(
                 context: context,
@@ -253,80 +151,402 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Camera View
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
-
-          // Targeting Scanner Overlay Frame
-          Center(
-            child: Container(
-              width: 260,
-              height: 260,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // STEP 1: Academic Year, Subject, and Group Selection (Like Web)
+            Container(
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                border: Border.all(color: branding.primaryColor, width: 3),
-                borderRadius: BorderRadius.circular(24),
+                color: Theme.of(context).cardColor,
+                border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.15))),
               ),
-              child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(6),
+                  Text(
+                    'تحديد المجموعة المستهدفة للحضور:',
+                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: branding.primaryColor),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      // Year Dropdown
+                      Expanded(
+                        child: yearsAsync.when(
+                          data: (years) => DropdownButtonFormField<String>(
+                            value: _selectedYearId,
+                            isExpanded: true,
+                            hint: Text('السنة الدراسية', style: GoogleFonts.cairo(fontSize: 11.5)),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            ),
+                            items: years.map((y) {
+                              return DropdownMenuItem<String>(
+                                value: y['id'].toString(),
+                                child: Text(y['name'] ?? '', style: GoogleFonts.cairo(fontSize: 11.5)),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedYearId = val;
+                                _selectedGroupId = null;
+                              });
+                            },
+                          ),
+                          loading: () => const LinearProgressIndicator(),
+                          error: (_, __) => const Text('خطأ'),
+                        ),
                       ),
-                      child: Text(
-                        'QR / Barcode',
-                        style: GoogleFonts.cairo(color: Colors.white, fontSize: 10),
+                      const SizedBox(width: 8),
+
+                      // Subject Dropdown
+                      Expanded(
+                        child: subjectsAsync.when(
+                          data: (subjects) => DropdownButtonFormField<String>(
+                            value: _selectedSubjectId,
+                            isExpanded: true,
+                            hint: Text('المادة', style: GoogleFonts.cairo(fontSize: 11.5)),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            ),
+                            items: subjects.map((s) {
+                              return DropdownMenuItem<String>(
+                                value: s['id'].toString(),
+                                child: Text(s['name'] ?? '', style: GoogleFonts.cairo(fontSize: 11.5)),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedSubjectId = val;
+                                _selectedGroupId = null;
+                              });
+                            },
+                          ),
+                          loading: () => const LinearProgressIndicator(),
+                          error: (_, __) => const Text('خطأ'),
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Group Dropdown
+                  groupsAsync.when(
+                    data: (groups) {
+                      final availableGroups = groups.where((g) {
+                        if (_selectedYearId != null && g['academicYearId'] != _selectedYearId) return false;
+                        if (_selectedSubjectId != null && g['subjectId'] != _selectedSubjectId) return false;
+                        return true;
+                      }).toList();
+
+                      return DropdownButtonFormField<String>(
+                        value: _selectedGroupId,
+                        isExpanded: true,
+                        hint: Text(
+                          availableGroups.isEmpty ? 'لا توجد مجموعات مطابقة' : 'اختر المجموعة الحالية بالسنتر...',
+                          style: GoogleFonts.cairo(fontSize: 12.5),
+                        ),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(LucideIcons.layers, size: 18),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: branding.primaryColor),
+                          ),
+                        ),
+                        items: availableGroups.map((g) {
+                          final name = g['name'] ?? '';
+                          final teacher = g['teacher']?['name'] ?? '';
+                          return DropdownMenuItem<String>(
+                            value: g['id'].toString(),
+                            child: Text(
+                              '$name ${teacher.isNotEmpty ? "($teacher)" : ""}',
+                              style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedGroupId = val;
+                            _lastScanFeedback = null;
+                          });
+                        },
+                      );
+                    },
+                    loading: () => const LinearProgressIndicator(),
+                    error: (_, __) => const Text('خطأ في تحميل المجموعات'),
                   ),
                 ],
               ),
             ),
-          ),
 
-          // Bottom Control Panel
-          Positioned(
-            bottom: 30,
-            left: 20,
-            right: 20,
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
+            const SizedBox(height: 12),
+
+            // STEP 2: Compact Barcode Scanner Box (Not 100% fullscreen, targeted 1D horizontal barcode box)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                children: [
+                  Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: _selectedGroupId != null ? branding.primaryColor : Colors.grey.withOpacity(0.4),
+                        width: 2.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_selectedGroupId != null ? branding.primaryColor : Colors.transparent).withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    icon: const Icon(LucideIcons.keyboard, size: 18),
-                    label: const Text('إدخال كود يدوي'),
-                    onPressed: _showManualSearchDialog,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: branding.primaryColor,
-                      foregroundColor: Colors.white,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          if (_selectedGroupId != null)
+                            MobileScanner(
+                              controller: _controller,
+                              onDetect: _onBarcodeDetect,
+                            )
+                          else
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(LucideIcons.scanLine, color: Colors.white54, size: 40),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'اختر المجموعة أولاً لتفعيل الماسح الضوئي',
+                                    style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12.5),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // Horizontal 1D Barcode Targeting Reticle
+                          if (_selectedGroupId != null)
+                            Center(
+                              child: Container(
+                                width: 280,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Container(
+                                    height: 2,
+                                    width: 260,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Processing Overlay
+                          if (_isProcessing)
+                            Container(
+                              color: Colors.black54,
+                              child: const Center(
+                                child: CircularProgressIndicator(color: Colors.white),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                    icon: const Icon(LucideIcons.camera, size: 18),
-                    label: const Text('تبديل الكاميرا'),
-                    onPressed: () => _controller.switchCamera(),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 10),
+
+                  // Feedback Banner
+                  if (_lastScanFeedback != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: (_feedbackColor ?? branding.primaryColor).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _feedbackColor ?? branding.primaryColor),
+                      ),
+                      child: Text(
+                        _lastScanFeedback!,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cairo(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: _feedbackColor ?? branding.primaryColor,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 12),
+
+                  // Manual Barcode Input Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _manualCodeCtrl,
+                          keyboardType: TextInputType.text,
+                          decoration: InputDecoration(
+                            hintText: 'إدخال كود الطالب أو الباركود يدوياً...',
+                            prefixIcon: const Icon(LucideIcons.barcode, size: 20),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onSubmitted: (val) {
+                            if (val.trim().isNotEmpty) {
+                              _processAttendance(val.trim());
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: branding.primaryColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(LucideIcons.check, size: 18),
+                        label: const Text('تسجيل'),
+                        onPressed: () {
+                          if (_manualCodeCtrl.text.trim().isNotEmpty) {
+                            _processAttendance(_manualCodeCtrl.text.trim());
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 18),
+
+            // STEP 3: Live Group Attendance List Below Scanner
+            if (_selectedGroupId != null)
+              Consumer(
+                builder: (context, ref, _) {
+                  final attAsync = ref.watch(liveGroupAttendanceProvider(_selectedGroupId!));
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'كشف حضور المجموعة الحالي',
+                              style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              icon: const Icon(LucideIcons.refreshCw, size: 16),
+                              tooltip: 'تحديث الكشف',
+                              onPressed: () {
+                                ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+
+                        attAsync.when(
+                          data: (records) {
+                            if (records.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'لم يتم تسجيل أي حضور حتى الآن في هذه الحصة',
+                                    style: GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: records.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              itemBuilder: (ctx, idx) {
+                                final item = records[idx];
+                                final student = item['student'] ?? {};
+                                final name = student['name'] ?? 'طالب';
+                                final code = student['studentCode'] ?? '';
+                                final phone = student['guardianPhone'] ?? student['phone'] ?? '';
+                                final status = item['status'] ?? 'PRESENT';
+                                final timeStr = item['scannedAt'] != null
+                                    ? item['scannedAt'].toString().split('T').last.substring(0, 5)
+                                    : 'الآن';
+
+                                return Card(
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(color: Colors.grey.withOpacity(0.18)),
+                                  ),
+                                  child: ListTile(
+                                    dense: true,
+                                    leading: CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: status == 'LATE'
+                                          ? const Color(0xFFF59E0B).withOpacity(0.15)
+                                          : const Color(0xFF10B981).withOpacity(0.15),
+                                      child: Icon(
+                                        status == 'LATE' ? LucideIcons.clock : LucideIcons.check,
+                                        size: 16,
+                                        color: status == 'LATE' ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                                      ),
+                                    ),
+                                    title: Text(name, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    subtitle: Text('$code • تم التسجيل $timeStr', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                                    trailing: IconButton(
+                                      icon: const Icon(LucideIcons.messageSquare, color: Color(0xFF10B981), size: 18),
+                                      tooltip: 'إشعار واتساب لولي الأمر',
+                                      onPressed: () {
+                                        WhatsAppService.sendCustomMessage(
+                                          context,
+                                          phone: phone,
+                                          message: 'إشعار حضور: تم تسجيل حضور الطالب $name بنجاح الساعة $timeStr.',
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (_, __) => const Text('تعذر تحميل كشف الحضور'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }

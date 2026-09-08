@@ -386,53 +386,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
               ),
             ),
-
-            const SizedBox(height: 18),
-            const Divider(),
-            const SizedBox(height: 10),
-
-            // Quick Role Switcher for Live Demo & Testing
-            Text(
-              'أو دخول سريع للتجربة (يكتشف الدور تلقائياً):',
-              style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildDemoChip('👑 الإدارة', '01000000001', AppConstants.roleOwner, branding),
-                const SizedBox(width: 6),
-                _buildDemoChip('💼 مساعد', '01111111112', AppConstants.roleAssistant, branding),
-                const SizedBox(width: 6),
-                _buildDemoChip('👨‍🏫 معلم', '01222222223', AppConstants.roleTeacher, branding),
-              ],
-            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDemoChip(String label, String phone, String role, dynamic branding) {
-    return Expanded(
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          side: BorderSide(color: branding.primaryColor.withOpacity(0.3)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        onPressed: () {
-          setState(() {
-            _loginUserCtrl.text = phone;
-            _loginPassCtrl.text = '123456';
-          });
-          SoundService.lightImpact();
-          _handleLogin();
-        },
-        child: Text(
-          label,
-          style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
