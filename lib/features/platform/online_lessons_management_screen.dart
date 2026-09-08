@@ -192,7 +192,7 @@ class _OnlineLessonsManagementScreenState
                   decoration: InputDecoration(
                     labelText: isEditing ? "كود أو رابط يوتيوب (اتركه فارغاً للاحتفاظ بالحالي)" : "كود أو رابط فيديو يوتيوب *",
                     hintText: "dQw4w9WgXcQ أو رابط كامل",
-                    prefixIcon: const Icon(LucideIcons.youtube, size: 18),
+                    prefixIcon: const Icon(LucideIcons.video, size: 18),
                     isDense: true,
                   ),
                 ),
