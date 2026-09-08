@@ -257,9 +257,10 @@ class _BooksInventoryScreenState extends ConsumerState<BooksInventoryScreen> {
                   ),
                 );
               },
-            ),
-              ),
-            ),
+            );
+          },
+        ),
+      ),
           ],
         ),
       ),
