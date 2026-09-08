@@ -17,5 +17,9 @@ void main() {
 
     // Initial render verify
     expect(find.byType(ZorarStaffApp), findsOneWidget);
+
+    // Drain timers from splash screen
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
   });
 }
