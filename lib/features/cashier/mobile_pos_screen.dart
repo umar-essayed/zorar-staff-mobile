@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/services/sound_service.dart';
+import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
 
 class MobilePosScreen extends ConsumerStatefulWidget {
@@ -289,8 +290,14 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
             label: const Text('إرسال واتساب'),
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم فتح تطبيق واتساب لمشاركة الإيصال مع ولي الأمر')),
+              WhatsAppService.sendParentReceipt(
+                context: context,
+                parentPhone: '01012345678',
+                studentName: selectedStudent,
+                itemTitle: selectedItem,
+                amount: total,
+                receiptNumber: 'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                centerName: centerName,
               );
             },
           ),

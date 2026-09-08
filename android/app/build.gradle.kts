@@ -29,11 +29,32 @@ android {
         versionName = flutter.versionName
     }
 
+    val keystoreProperties = java.util.Properties()
+    val keystorePropertiesFile = rootProject.file("key.properties")
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+    }
+
+    val releaseKeystoreFile = file(keystoreProperties.getProperty("storeFile") ?: "zorar-release.jks")
+
+    signingConfigs {
+        if (releaseKeystoreFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias") ?: "zorar"
+                keyPassword = keystoreProperties.getProperty("keyPassword") ?: "zorarcode2026"
+                storeFile = releaseKeystoreFile
+                storePassword = keystoreProperties.getProperty("storePassword") ?: "zorarcode2026"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (signingConfigs.findByName("release") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

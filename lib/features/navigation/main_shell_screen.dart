@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/branding_service.dart';
+import '../../core/services/security_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../academic/academic_groups_screen.dart';
@@ -237,6 +238,13 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               ref.read(brandingProvider.notifier).toggleDarkMode();
             },
           ),
+          IconButton(
+            icon: const Icon(LucideIcons.lock, size: 20),
+            tooltip: 'قفل الشاشة السريع',
+            onPressed: () {
+              SecurityService.showSecurityPinDialog(context, title: 'قفل الخزينة والشاشة');
+            },
+          ),
         ],
       ),
       body: IndexedStack(
@@ -421,11 +429,35 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           // Section 4: Settings & Branding
           _buildDrawerSectionTitle('الهوية والإعدادات'),
           ListTile(
-            leading: const Icon(LucideIcons.palette),
-            title: Text('تخصيص الهوية والأيقونة', style: GoogleFonts.cairo(fontSize: 13)),
+            leading: const Icon(LucideIcons.shieldCheck),
+            title: Text('حماية الخزينة برمز PIN', style: GoogleFonts.cairo(fontSize: 13)),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const BrandingSettingsScreen()));
+              SecurityService.showSecurityPinDialog(context, title: 'إعدادات الحماية والأمان');
+            },
+          ),
+          ListTile(
+            leading: const Icon(LucideIcons.info),
+            title: Text('عن تطبيق زرار كود', style: GoogleFonts.cairo(fontSize: 13)),
+            subtitle: Text('إصدار الإنتاج v1.0.1 (سحابي)', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+            onTap: () {
+              Navigator.pop(context);
+              showAboutDialog(
+                context: context,
+                applicationName: 'زرار كود • Zorar Code',
+                applicationVersion: 'v1.0.1+1 (Production Release)',
+                applicationIcon: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset('assets/images/zorar_icon.png', width: 48, height: 48),
+                ),
+                children: [
+                  const SizedBox(height: 8),
+                  Text(
+                    'المنظومة الميدانية السحابية المتكاملة لإدارة السناتر التعليمية، المساعدين، كروت الطلاب، ونقاط البيع المحمولة.',
+                    style: GoogleFonts.cairo(fontSize: 12),
+                  ),
+                ],
+              );
             },
           ),
         ],

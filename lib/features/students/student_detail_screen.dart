@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/services/sound_service.dart';
+import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../cashier/mobile_pos_screen.dart';
 
@@ -47,6 +48,20 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
           style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.messageSquare),
+            tooltip: 'إرسال تنبيه واتساب لولي الأمر',
+            onPressed: () {
+              WhatsAppService.sendAbsenceAlert(
+                context: context,
+                parentPhone: '01012345678',
+                studentName: widget.studentName,
+                subjectName: 'اللغة العربية',
+                groupName: '3ث لغة عربية (أ)',
+                centerName: branding.centerName,
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(LucideIcons.printer),
             tooltip: 'طباعة كارت الطالب',

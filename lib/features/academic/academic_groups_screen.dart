@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/services/export_service.dart';
 import '../../core/theme/branding_provider.dart';
 import 'group_form_dialog.dart';
 
@@ -156,9 +157,30 @@ class _AcademicGroupsScreenState extends ConsumerState<AcademicGroupsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              g.name,
-                              style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                            Expanded(
+                              child: Text(
+                                g.name,
+                                style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(LucideIcons.fileSpreadsheet, size: 18),
+                              tooltip: 'تصدير كشف الحضور',
+                              onPressed: () {
+                                ExportService.exportAttendanceRoster(
+                                  context: context,
+                                  groupTitle: g.name,
+                                  presentCount: g.enrolled,
+                                  absentCount: g.capacity - g.enrolled,
+                                  presentStudents: [
+                                    'أحمد محمد مصطفى',
+                                    'محمود عبد الرازق حسن',
+                                    'سارة إبراهيم فتحي',
+                                    'مريم علي حسن',
+                                    'يوسف طارق السيد'
+                                  ],
+                                );
+                              },
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

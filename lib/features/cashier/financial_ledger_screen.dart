@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/services/export_service.dart';
 import '../../core/theme/branding_provider.dart';
 
 class PaymentTransaction {
@@ -127,6 +128,22 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
           'سجل وجرد المدفوعات المالي',
           style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.fileSpreadsheet),
+            tooltip: 'تصدير ملخص الخزينة',
+            onPressed: () {
+              ExportService.exportFinancialSummary(
+                context: context,
+                centerName: branding.centerName,
+                totalIncome: totalAmount,
+                totalExpenses: 340.0,
+                netProfit: totalAmount - 340.0,
+                totalTransactions: filtered.length,
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [

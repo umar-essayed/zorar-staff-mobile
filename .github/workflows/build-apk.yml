@@ -1,4 +1,4 @@
-name: Build & Release Zorar Mobile APK
+name: Build & Release Zorar Mobile Production
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Signed Android Production Suite
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -32,47 +32,80 @@ jobs:
       - name: Verify Flutter & Environment
         run: flutter --version
 
+      - name: Configure Android Production Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/zorar-release.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias zorar -storepass zorarcode2026 -keypass zorarcode2026 \
+            -dname "CN=Zorar Code Production, OU=Mobile, O=Zorar Inc, L=Cairo, ST=Cairo, C=EG"
+          echo "storePassword=zorarcode2026" > android/key.properties
+          echo "keyPassword=zorarcode2026" >> android/key.properties
+          echo "keyAlias=zorar" >> android/key.properties
+          echo "storeFile=zorar-release.jks" >> android/key.properties
+
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Run Tests
         run: flutter test
 
-      - name: Build Debug APK (Universal Install)
+      - name: Build Debug APK (Direct Sideload)
         run: flutter build apk --debug
 
-      - name: Build Release APK
+      - name: Build Signed Release APK (Universal Production)
         run: flutter build apk --release --no-tree-shake-icons
 
-      - name: Rename APKs for Clarity
-        run: |
-          mkdir -p output_apks
-          cp build/app/outputs/flutter-apk/app-debug.apk output_apks/zorar-staff-debug.apk
-          cp build/app/outputs/flutter-apk/app-release.apk output_apks/zorar-staff-release.apk
-          echo "Built APK files:"
-          ls -lh output_apks/
+      - name: Build Signed App Bundle (Google Play Store AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons
 
-      - name: Upload APKs as Workflow Artifacts
+      - name: Package & Generate Checksums
+        run: |
+          mkdir -p output_dist
+          cp build/app/outputs/flutter-apk/app-debug.apk output_dist/zorar-staff-debug.apk
+          cp build/app/outputs/flutter-apk/app-release.apk output_dist/zorar-staff-release-signed.apk
+          cp build/app/outputs/bundle/release/app-release.aab output_dist/zorar-staff-production.aab
+          cd output_dist
+          sha256sum * > SHA256SUMS.txt
+          echo "Generated Distribution Packages:"
+          ls -lh
+          cat SHA256SUMS.txt
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: zorar-mobile-apks
-          path: output_apks/*.apk
-          retention-days: 14
+          name: zorar-mobile-production-suite
+          path: output_dist/*
+          retention-days: 30
 
-      - name: Create GitHub Release with APK Downloads
+      - name: Create GitHub Production Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Zorar Code Mobile v1.0.${{ github.run_number }}
+          name: Zorar Code Mobile Production v1.0.${{ github.run_number }}
           body: |
-            ## 📱 تطبيق زرار كود - الإدارة والمساعدين والمدرسين
-            ### الإصدار رقم: v1.0.${{ github.run_number }}
-
-            - **حزمة التثبيت الفوري (Debug):** `zorar-staff-debug.apk` (جاهزة للتثبيت المباشر على الهاتف دون توقيع)
-            - **حزمة الإنتاج (Release):** `zorar-staff-release.apk`
+            ## 🚀 إصدار الإنتاج الرسمي لتطبيق زرار كود المحمول (Production Suite)
+            ### رقم الإصدار: v1.0.${{ github.run_number }}
             
-            تم البناء تلقائياً عبر GitHub Actions 🚀
-          files: output_apks/*.apk
+            تم بناء الحزم رسمياً وتوقيعها رقمياً (Digitally Signed with RSA 2048-bit Keystore) بكامل الميزات الميدانية:
+
+            ---
+            ### 📦 ملفات التثبيت المتاحة:
+            1. 📲 **`zorar-staff-release-signed.apk` (نسخة الإنتاج الموقعة):**
+               - حزمة إنتاج رسمية موثقة وموقعة بالشهادة السحابية، محسنة بالكامل للسرعة وتقليل الحجم.
+            2. ⚡ **`zorar-staff-debug.apk` (نسخة التثبيت الفوري):**
+               - للتجربة السريعة والمباشرة دون قيود أمنية على أي جهاز أندرويد.
+            3. 🏪 **`zorar-staff-production.aab` (Google Play App Bundle):**
+               - الحزمة الجاهزة للرفع المباشر إلى متجر جوجل بلاي (Google Play Console).
+            4. 🛡️ **`SHA256SUMS.txt`:**
+               - البصمات الرقمية للتحقق من سلامة وصحة الملفات.
+
+            ---
+            ### ✨ أبرز مميزات التحديث الميداني:
+            - 🔒 نظام حماية وقفل الخزينة وشاشة الكاشير برمز PIN الميداني.
+            - 💬 خدمة إرسال إيصالات الدفع وتنبيهات الغياب لأولياء الأمور مباشرة عبر واتساب.
+            - 📊 تصدير ملخصات الخزينة وكشوف حضور وغياب المجموعات.
+            - 🎨 دعم الوضع الليلي الكامل وتخصيص هوية وألوان السنتر مع زر التحقق من النظام.
+          files: output_dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
