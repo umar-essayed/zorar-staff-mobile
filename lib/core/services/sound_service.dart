@@ -10,6 +10,10 @@ class SoundService {
     HapticFeedback.mediumImpact();
   }
 
+  static void lightImpact() {
+    HapticFeedback.lightImpact();
+  }
+
   static void errorFeedback() {
     HapticFeedback.heavyImpact();
     HapticFeedback.vibrate();
