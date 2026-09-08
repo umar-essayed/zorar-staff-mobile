@@ -47,7 +47,12 @@ class WhatsAppService {
 يرجى التواصل مع إدارة السنتر للمتابعة.
 ''';
 
-    _copyAndNotify(context, message, 'تم نسخ إشعار الغياب وجاهز للإرسال لولي الأمر');
+  static void sendCustomMessage(
+    BuildContext context, {
+    required String phone,
+    required String message,
+  }) {
+    _copyAndNotify(context, message, 'تم نسخ الرسالة وجاهزة للإرسال إلى $phone عبر واتساب');
   }
 
   static void _copyAndNotify(BuildContext context, String text, String feedbackText) {

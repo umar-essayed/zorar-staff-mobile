@@ -5,17 +5,21 @@ import '../constants/app_constants.dart';
 
 class BrandingModel {
   final String centerName;
+  final String subdomain;
   final Color primaryColor;
   final Color secondaryColor;
   final String? logoUrl;
+  final String? heroBannerUrl;
   final String? selectedIconAlias;
   final bool isDarkMode;
 
   const BrandingModel({
     required this.centerName,
+    this.subdomain = 'center-alnoor',
     required this.primaryColor,
     required this.secondaryColor,
     this.logoUrl,
+    this.heroBannerUrl,
     this.selectedIconAlias,
     this.isDarkMode = false,
   });
@@ -23,6 +27,7 @@ class BrandingModel {
   factory BrandingModel.defaultBranding() {
     return const BrandingModel(
       centerName: AppConstants.defaultCenterName,
+      subdomain: 'center-alnoor',
       primaryColor: AppConstants.defaultPrimaryColor,
       secondaryColor: AppConstants.defaultSecondaryColor,
       isDarkMode: false,
@@ -31,17 +36,21 @@ class BrandingModel {
 
   BrandingModel copyWith({
     String? centerName,
+    String? subdomain,
     Color? primaryColor,
     Color? secondaryColor,
     String? logoUrl,
+    String? heroBannerUrl,
     String? selectedIconAlias,
     bool? isDarkMode,
   }) {
     return BrandingModel(
       centerName: centerName ?? this.centerName,
+      subdomain: subdomain ?? this.subdomain,
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
       logoUrl: logoUrl ?? this.logoUrl,
+      heroBannerUrl: heroBannerUrl ?? this.heroBannerUrl,
       selectedIconAlias: selectedIconAlias ?? this.selectedIconAlias,
       isDarkMode: isDarkMode ?? this.isDarkMode,
     );
@@ -50,9 +59,11 @@ class BrandingModel {
   Map<String, dynamic> toJson() {
     return {
       'centerName': centerName,
+      'subdomain': subdomain,
       'primaryColor': primaryColor.value,
       'secondaryColor': secondaryColor.value,
       'logoUrl': logoUrl,
+      'heroBannerUrl': heroBannerUrl,
       'selectedIconAlias': selectedIconAlias,
       'isDarkMode': isDarkMode,
     };
@@ -61,6 +72,7 @@ class BrandingModel {
   factory BrandingModel.fromJson(Map<String, dynamic> json) {
     return BrandingModel(
       centerName: json['centerName'] as String? ?? AppConstants.defaultCenterName,
+      subdomain: json['subdomain'] as String? ?? 'center-alnoor',
       primaryColor: json['primaryColor'] != null
           ? Color(json['primaryColor'] as int)
           : AppConstants.defaultPrimaryColor,
@@ -68,6 +80,7 @@ class BrandingModel {
           ? Color(json['secondaryColor'] as int)
           : AppConstants.defaultSecondaryColor,
       logoUrl: json['logoUrl'] as String?,
+      heroBannerUrl: json['heroBannerUrl'] as String?,
       selectedIconAlias: json['selectedIconAlias'] as String?,
       isDarkMode: json['isDarkMode'] as bool? ?? false,
     );

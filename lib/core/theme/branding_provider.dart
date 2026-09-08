@@ -18,6 +18,21 @@ class BrandingNotifier extends StateNotifier<BrandingModel> {
     await BrandingService.saveBranding(state);
   }
 
+  Future<void> updateSubdomain(String subdomain) async {
+    state = state.copyWith(subdomain: subdomain);
+    await BrandingService.saveBranding(state);
+  }
+
+  Future<void> updateLogoUrl(String url) async {
+    state = state.copyWith(logoUrl: url);
+    await BrandingService.saveBranding(state);
+  }
+
+  Future<void> updateHeroBannerUrl(String url) async {
+    state = state.copyWith(heroBannerUrl: url);
+    await BrandingService.saveBranding(state);
+  }
+
   Future<void> updatePrimaryColor(Color color) async {
     state = state.copyWith(primaryColor: color);
     await BrandingService.saveBranding(state);
