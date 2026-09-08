@@ -38,9 +38,14 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
     final studentCode = selectedStudentObj?['studentCode']?.toString() ?? '';
     final studentPhone = selectedStudentObj?['phone']?.toString() ?? '';
     final guardianPhone = selectedStudentObj?['guardianPhone']?.toString() ?? studentPhone;
-    final groupName = (selectedStudentObj?['groups'] as List?)?.isNotEmpty == true
-        ? selectedStudentObj!['groups'][0]['group']?['name']?.toString() ?? 'مجموعة عامة'
-        : 'طالب مسجل بالسنتر';
+    String groupName = 'طالب مسجل بالسنتر';
+    final groupsList = selectedStudentObj?['groups'] as List?;
+    if (groupsList != null && groupsList.isNotEmpty) {
+      final firstGroup = groupsList[0];
+      if (firstGroup is Map && firstGroup['group'] is Map) {
+        groupName = firstGroup['group']['name']?.toString() ?? 'مجموعة عامة';
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(

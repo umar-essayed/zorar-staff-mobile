@@ -327,8 +327,10 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
                         ),
                       );
                     },
-                  ),
-          ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );

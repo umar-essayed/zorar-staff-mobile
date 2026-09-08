@@ -219,7 +219,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       // Step 3: Login with newly created credentials
       return await login(phone.trim(), password.trim());
-    } catch (e: dynamic) {
+    } catch (e) {
       debugPrint('Tenant registration API error: $e');
       String errorMsg = 'تعذر إنشاء الحساب الجديد، يرجى مراجعة البيانات';
       if (e is DioException) {
@@ -234,8 +234,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false, errorMessage: errorMsg);
       return false;
     }
-  }
-    return true;
   }
 
   // Fast demo account switcher for immediate live testing
