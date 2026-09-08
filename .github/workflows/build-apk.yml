@@ -1,0 +1,78 @@
+name: Build & Release Zorar Mobile APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Environment
+        run: flutter --version
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Tests
+        run: flutter test
+
+      - name: Build Debug APK (Universal Install)
+        run: flutter build apk --debug
+
+      - name: Build Release APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Rename APKs for Clarity
+        run: |
+          mkdir -p output_apks
+          cp build/app/outputs/flutter-apk/app-debug.apk output_apks/zorar-staff-debug.apk
+          cp build/app/outputs/flutter-apk/app-release.apk output_apks/zorar-staff-release.apk
+          echo "Built APK files:"
+          ls -lh output_apks/
+
+      - name: Upload APKs as Workflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zorar-mobile-apks
+          path: output_apks/*.apk
+          retention-days: 14
+
+      - name: Create GitHub Release with APK Downloads
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Zorar Code Mobile v1.0.${{ github.run_number }}
+          body: |
+            ## 📱 تطبيق زرار كود - الإدارة والمساعدين والمدرسين
+            ### الإصدار رقم: v1.0.${{ github.run_number }}
+
+            - **حزمة التثبيت الفوري (Debug):** `zorar-staff-debug.apk` (جاهزة للتثبيت المباشر على الهاتف دون توقيع)
+            - **حزمة الإنتاج (Release):** `zorar-staff-release.apk`
+            
+            تم البناء تلقائياً عبر GitHub Actions 🚀
+          files: output_apks/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
