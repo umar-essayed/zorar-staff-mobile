@@ -78,7 +78,7 @@ class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (c) => AttendanceScannerScreen(preselectedGroupId: _selectedGroupId),
+                    builder: (c) => AttendanceScannerScreen(initialGroupId: _selectedGroupId),
                   ),
                 );
               },
