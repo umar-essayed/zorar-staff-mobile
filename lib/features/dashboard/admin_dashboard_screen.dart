@@ -428,12 +428,13 @@ class AdminDashboardScreen extends ConsumerWidget {
                                 color: const Color(0xFFF59E0B),
                               ),
                             ),
-                          _buildAlertItem(
-                            title: 'الخزينة والعمليات السحابية متزامنة',
-                            subtitle: 'تمت المزامنة بنجاح مع سيرفر الإنتاج الرسمي (Vercel Serverless)',
-                            icon: LucideIcons.shieldCheck,
-                            color: const Color(0xFF10B981),
-                          ),
+                          if (unpaidCount == 0 && lowStockCount == 0)
+                            _buildAlertItem(
+                              title: 'كافة العمليات منتظمة ومحدثة',
+                              subtitle: 'لا توجد مستحقات معلقة أو نواقص في مخزن الملازم اليوم',
+                              icon: LucideIcons.checkCircle2,
+                              color: const Color(0xFF10B981),
+                            ),
                         ],
                       );
                     },

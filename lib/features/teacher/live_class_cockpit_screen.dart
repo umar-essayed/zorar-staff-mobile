@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
+import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
 
 class LiveClassCockpitScreen extends ConsumerStatefulWidget {
@@ -225,6 +226,7 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
                           final hw = _homeworkStatus[sId] ?? 'DONE';
                           final isSaving = _savingStudentIds.contains(sId);
                           final isSaved = _savedStudentIds.contains(sId);
+                          final phone = student['parentPhone']?.toString() ?? student['phone']?.toString() ?? '';
 
                           return Card(
                             shape: RoundedRectangleBorder(
@@ -328,24 +330,54 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
                                   ),
                                   const SizedBox(height: 12),
 
-                                  // Save Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isSaved ? Colors.grey[700] : branding.primaryColor,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  // Save & WhatsApp Actions
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: isSaved ? Colors.grey[700] : branding.primaryColor,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            padding: const EdgeInsets.symmetric(vertical: 10),
+                                          ),
+                                          icon: isSaving
+                                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                              : const Icon(LucideIcons.save, size: 16),
+                                          label: Text(
+                                            isSaving ? 'جاري الحفظ...' : (isSaved ? 'تحديث التقييم' : 'حفظ التقييم'),
+                                            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                          onPressed: isSaving ? null : () => _saveAssessment(sId, name),
+                                        ),
                                       ),
-                                      icon: isSaving
-                                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                          : const Icon(LucideIcons.save, size: 16),
-                                      label: Text(
-                                        isSaving ? 'جاري الحفظ...' : (isSaved ? 'تحديث التقييم' : 'حفظ تقييم الطالب'),
-                                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
-                                      ),
-                                      onPressed: isSaving ? null : () => _saveAssessment(sId, name),
-                                    ),
+                                      if (phone.isNotEmpty) ...[
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: const Color(0xFF25D366),
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            padding: const EdgeInsets.all(10),
+                                          ),
+                                          tooltip: 'إرسال تقرير الحصة واتساب لولي الأمر',
+                                          icon: const Icon(LucideIcons.messageCircle, size: 18),
+                                          onPressed: () {
+                                            WhatsAppService.sendSessionAssessmentReport(
+                                              context: context,
+                                              parentPhone: phone,
+                                              studentName: name,
+                                              groupName: title,
+                                              score: score,
+                                              maxScore: 10,
+                                              homeworkStatus: hw,
+                                              centerName: branding.centerName,
+                                              behaviorNotes: _notesControllers[sId]?.text.trim(),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),

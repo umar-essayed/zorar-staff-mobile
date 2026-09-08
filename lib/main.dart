@@ -1,31 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/branding_provider.dart';
-import 'features/navigation/main_shell_screen.dart';
-import 'features/onboarding/onboarding_screen.dart';
+import 'features/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  final hasSeenOnboarding = prefs.getBool('zorar_has_seen_onboarding') ?? false;
-
   runApp(
-    ProviderScope(
-      child: ZorarStaffApp(hasSeenOnboarding: hasSeenOnboarding),
+    const ProviderScope(
+      child: ZorarStaffApp(),
     ),
   );
 }
 
 class ZorarStaffApp extends ConsumerWidget {
-  final bool hasSeenOnboarding;
-
-  const ZorarStaffApp({
-    super.key,
-    this.hasSeenOnboarding = false,
-  });
+  const ZorarStaffApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,7 +38,7 @@ class ZorarStaffApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: hasSeenOnboarding ? const MainShellScreen() : const OnboardingScreen(),
+      home: const SplashScreen(),
     );
   }
 }

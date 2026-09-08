@@ -99,17 +99,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: branding.primaryColor.withOpacity(0.15),
-                          shape: BoxShape.circle,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.asset(
+                          'assets/images/zorar_icon.png',
+                          width: 26,
+                          height: 26,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(LucideIcons.sparkles, color: branding.primaryColor, size: 20),
                         ),
-                        child: Icon(LucideIcons.sparkles, color: branding.primaryColor, size: 20),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'زُرار برو (Zorar Pro)',
+                        'زُرار كود (Zorar Code)',
                         style: GoogleFonts.cairo(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,

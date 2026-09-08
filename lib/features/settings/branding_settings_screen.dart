@@ -114,7 +114,8 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
       'name': newName,
       'subdomain': newSub,
       'brandingConfig': {
-        'primaryColor': '#${branding.primaryColor.value.toRadixString(16).substring(2)}',
+        'primaryColor': '#${branding.primaryColor.value.toRadixString(16).padLeft(8, '0').substring(2)}',
+        'secondaryColor': '#${branding.secondaryColor.value.toRadixString(16).padLeft(8, '0').substring(2)}',
         'logoUrl': branding.logoUrl,
         'heroBannerUrl': branding.heroBannerUrl,
       },
@@ -333,54 +334,107 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
 
             const SizedBox(height: 24),
 
-            // Section 3: Colors
+            // Section 3: Colors (Primary & Secondary)
             Text(
-              'اللون الرسمي للمنظومة والتطبيق:',
+              'ألوان المنظومة والتطبيق الميداني:',
               style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: colorPresets.map((preset) {
-                final Color color = preset['color'];
-                final bool isSelected = branding.primaryColor.value == color.value;
-
-                return InkWell(
-                  onTap: () {
-                    SoundService.lightImpact();
-                    ref.read(brandingProvider.notifier).updatePrimaryColor(color);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected ? color.withOpacity(0.15) : Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected ? color : Colors.grey.withOpacity(0.25),
-                        width: isSelected ? 2 : 1,
+            Row(
+              children: [
+                // Primary Color Card
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _openColorPicker(context, isPrimary: true),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: branding.primaryColor.withOpacity(0.4), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(color: branding.primaryColor.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(radius: 12, backgroundColor: branding.primaryColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('اللون الأساسي', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '#${branding.primaryColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+                            style: GoogleFonts.firaCode(fontSize: 12, fontWeight: FontWeight.bold, color: branding.primaryColor),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(LucideIcons.pipette, size: 14, color: branding.primaryColor),
+                              const SizedBox(width: 4),
+                              Text('تغيير / كود اللون', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(radius: 8, backgroundColor: color),
-                        const SizedBox(width: 8),
-                        Text(
-                          preset['name'],
-                          style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? color : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Secondary Color Card
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _openColorPicker(context, isPrimary: false),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: branding.secondaryColor.withOpacity(0.4), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(color: branding.secondaryColor.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(radius: 12, backgroundColor: branding.secondaryColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('اللون الفرعي', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            '#${branding.secondaryColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+                            style: GoogleFonts.firaCode(fontSize: 12, fontWeight: FontWeight.bold, color: branding.secondaryColor),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(LucideIcons.pipette, size: 14, color: branding.secondaryColor),
+                              const SizedBox(width: 4),
+                              Text('تغيير / كود اللون', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
 
             const SizedBox(height: 24),
@@ -423,11 +477,291 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                     );
                   }
                 },
+  void _openColorPicker(BuildContext context, {required bool isPrimary}) {
+    final branding = ref.read(brandingProvider);
+    Color currentColor = isPrimary ? branding.primaryColor : branding.secondaryColor;
+    final hexController = TextEditingController(
+      text: currentColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase(),
+    );
+
+    int r = currentColor.red;
+    int g = currentColor.green;
+    int b = currentColor.blue;
+
+    final palette = [
+      const Color(0xFF10B981), // Emerald
+      const Color(0xFF059669),
+      const Color(0xFF047857),
+      const Color(0xFF6366F1), // Indigo
+      const Color(0xFF4F46E5),
+      const Color(0xFF4338CA),
+      const Color(0xFF3B82F6), // Blue
+      const Color(0xFF2563EB),
+      const Color(0xFF1D4ED8),
+      const Color(0xFF06B6D4), // Cyan
+      const Color(0xFF0891B2),
+      const Color(0xFF0E7490),
+      const Color(0xFF14B8A6), // Teal
+      const Color(0xFF0D9488),
+      const Color(0xFF0F766E),
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFF7C3AED),
+      const Color(0xFF6D28D9),
+      const Color(0xFFA855F7), // Purple
+      const Color(0xFF9333EA),
+      const Color(0xFF7E22CE),
+      const Color(0xFFEC4899), // Pink
+      const Color(0xFFDB2777),
+      const Color(0xFFBE185D),
+      const Color(0xFFF43F5E), // Rose
+      const Color(0xFFE11D48),
+      const Color(0xFFBE123C),
+      const Color(0xFFEF4444), // Red
+      const Color(0xFFDC2626),
+      const Color(0xFFB91C1C),
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFFD97706),
+      const Color(0xFFB45309),
+      const Color(0xFFF97316), // Orange
+      const Color(0xFFEA580C),
+      const Color(0xFFC2410C),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setPickerState) {
+          void updateColor(Color c) {
+            currentColor = c;
+            r = c.red;
+            g = c.green;
+            b = c.blue;
+            hexController.text = c.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase();
+            setPickerState(() {});
+          }
+
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 550),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: currentColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(color: currentColor.withOpacity(0.4), blurRadius: 8),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isPrimary ? 'تخصيص اللون الأساسي' : 'تخصيص اللون الفرعي',
+                                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                Text(
+                                  'اختر من الباليت أو اضبط المؤشرات أو اكتب كود الـ HEX مباشرة',
+                                  style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+
+                      // Live Hex Code input
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: hexController,
+                              style: GoogleFonts.firaCode(fontWeight: FontWeight.bold, fontSize: 15),
+                              decoration: InputDecoration(
+                                labelText: 'كود اللون (Hex Code)',
+                                prefixText: '# ',
+                                prefixStyle: GoogleFonts.firaCode(fontWeight: FontWeight.bold, color: currentColor),
+                                suffixIcon: Icon(LucideIcons.hash, color: currentColor),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                isDense: true,
+                              ),
+                              onChanged: (val) {
+                                String clean = val.replaceAll('#', '').trim();
+                                if (clean.length == 6) {
+                                  final parsed = int.tryParse('FF$clean', radix: 16);
+                                  if (parsed != null) {
+                                    currentColor = Color(parsed);
+                                    r = currentColor.red;
+                                    g = currentColor.green;
+                                    b = currentColor.blue;
+                                    setPickerState(() {});
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: currentColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 18),
+                      Text('باليت الألوان المتناسقة المقترحة:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: palette.map((color) {
+                          final isChosen = currentColor.value == color.value;
+                          return InkWell(
+                            onTap: () {
+                              SoundService.lightImpact();
+                              updateColor(color);
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isChosen ? Colors.white : Colors.black.withOpacity(0.15),
+                                  width: isChosen ? 3 : 1,
+                                ),
+                                boxShadow: isChosen
+                                    ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 8, spreadRadius: 1)]
+                                    : null,
+                              ),
+                              child: isChosen
+                                  ? const Icon(Icons.check, color: Colors.white, size: 20)
+                                  : null,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 18),
+                      Text('ضبط دقيق لدرجات RGB:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+
+                      // Red Slider
+                      Row(
+                        children: [
+                          Text('R: $r', style: GoogleFonts.firaCode(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Slider(
+                              value: r.toDouble(),
+                              min: 0,
+                              max: 255,
+                              activeColor: Colors.red,
+                              onChanged: (v) {
+                                r = v.toInt();
+                                updateColor(Color.fromARGB(255, r, g, b));
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Green Slider
+                      Row(
+                        children: [
+                          Text('G: $g', style: GoogleFonts.firaCode(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Slider(
+                              value: g.toDouble(),
+                              min: 0,
+                              max: 255,
+                              activeColor: Colors.green,
+                              onChanged: (v) {
+                                g = v.toInt();
+                                updateColor(Color.fromARGB(255, r, g, b));
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Blue Slider
+                      Row(
+                        children: [
+                          Text('B: $b', style: GoogleFonts.firaCode(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Slider(
+                              value: b.toDouble(),
+                              min: 0,
+                              max: 255,
+                              activeColor: Colors.blue,
+                              onChanged: (v) {
+                                b = v.toInt();
+                                updateColor(Color.fromARGB(255, r, g, b));
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text('إلغاء', style: GoogleFonts.cairo()),
+                          ),
+                          const Spacer(),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: currentColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            ),
+                            icon: const Icon(LucideIcons.check, size: 18),
+                            label: Text('تطبيق اللون المختار', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              SoundService.successFeedback();
+                              if (isPrimary) {
+                                ref.read(brandingProvider.notifier).updatePrimaryColor(currentColor);
+                              } else {
+                                ref.read(brandingProvider.notifier).updateSecondaryColor(currentColor);
+                              }
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
+

@@ -36,6 +36,9 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
   String? _selectedYearId;
   String? _selectedSubjectId;
   String? _selectedGroupId;
+  String? _selectedSessionId;
+  List<Map<String, dynamic>> _groupSessions = [];
+  bool _isLoadingSessions = false;
 
   final _manualCodeCtrl = TextEditingController();
   bool _isProcessing = false;
@@ -49,6 +52,38 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
   void initState() {
     super.initState();
     _selectedGroupId = widget.initialGroupId;
+    if (_selectedGroupId != null) {
+      _fetchSessionsForGroup(_selectedGroupId!);
+    }
+  }
+
+  Future<void> _fetchSessionsForGroup(String groupId) async {
+    setState(() {
+      _isLoadingSessions = true;
+      _selectedSessionId = null;
+      _groupSessions = [];
+    });
+    try {
+      final sessions = await EduApiService().getGroupSessions(groupId);
+      if (mounted) {
+        setState(() {
+          _groupSessions = sessions;
+          _isLoadingSessions = false;
+          // Find currently open/in-progress session or fallback to first
+          if (sessions.isNotEmpty) {
+            final active = sessions.firstWhere(
+              (s) => s['status'] == 'IN_PROGRESS' || s['status'] == 'OPEN',
+              orElse: () => sessions.first,
+            );
+            _selectedSessionId = active['id']?.toString();
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingSessions = false);
+      }
+    }
   }
 
   @override
@@ -97,6 +132,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
       final res = await EduApiService().scanAttendance(
         identifier: code,
         groupId: _selectedGroupId!,
+        sessionId: _selectedSessionId,
       );
 
       SoundService.successFeedback();
@@ -315,12 +351,79 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
                             _selectedGroupId = val;
                             _lastScanFeedback = null;
                           });
+                          if (val != null) {
+                            _fetchSessionsForGroup(val);
+                          }
                         },
                       );
                     },
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const Text('خطأ في تحميل المجموعات'),
                   ),
+                  if (_selectedGroupId != null) ...[
+                    const SizedBox(height: 10),
+                    if (_isLoadingSessions)
+                      const Row(
+                        children: [
+                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          SizedBox(width: 8),
+                          Text('جاري تحميل حصص وجلسات المجموعة...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      )
+                    else if (_groupSessions.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        value: _selectedSessionId,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'تحديد الحصة / الجلسة المستهدفة',
+                          prefixIcon: const Icon(LucideIcons.calendarCheck, size: 18),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        items: _groupSessions.map((s) {
+                          final num = s['sessionNumber'] ?? 1;
+                          final topic = s['topic'] ?? 'حصة بدون عنوان';
+                          final status = s['status'] ?? 'OPEN';
+                          final isOngoing = status == 'IN_PROGRESS' || status == 'OPEN';
+                          return DropdownMenuItem<String>(
+                            value: s['id'].toString(),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isOngoing ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'حصة $num',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: isOngoing ? Colors.green.shade800 : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    topic,
+                                    style: GoogleFonts.cairo(fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedSessionId = val);
+                        },
+                      ),
+                  ],
                 ],
               ),
             ),

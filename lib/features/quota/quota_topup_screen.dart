@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -6,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/network/api_client.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
+import '../../core/services/upload_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
 
@@ -48,6 +50,8 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
   final TextEditingController _notesCtrl = TextEditingController();
   String _paymentMethod = 'INSTAPAY_OR_WALLET';
   bool _isSubmitting = false;
+  String? _screenshotUrl;
+  bool _isUploadingScreenshot = false;
 
   final List<int> _quickAmounts = [50, 100, 250, 500, 1000];
 
@@ -92,6 +96,7 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
           'quantity': _quantity,
           'paymentMethod': _paymentMethod,
           'notes': _notesCtrl.text.trim(),
+          if (_screenshotUrl != null) 'screenshotUrl': _screenshotUrl,
         },
       );
 
@@ -100,7 +105,10 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
       ref.invalidate(liveTenantDetailsProvider);
 
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        setState(() {
+          _isSubmitting = false;
+          _screenshotUrl = null;
+        });
         _notesCtrl.clear();
         _tabController.animateTo(2); // Move to requests tab
 
@@ -366,6 +374,105 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
                       ),
 
                       const SizedBox(height: 16),
+                      // Transfer Account Banner
+                      Builder(
+                        builder: (ctx) {
+                          final transferAccount = pricing['transferAccount'] as Map<String, dynamic>? ?? {};
+                          final transferPhone = transferAccount['phone']?.toString() ?? '01553442304';
+
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF1E293B),
+                                  Color(0xFF0F172A),
+                                ],
+                                begin: Alignment.topRight,
+                                end: Alignment.bottomLeft,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: branding.primaryColor.withOpacity(0.4)),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4)),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: branding.primaryColor.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(LucideIcons.send, color: branding.primaryColor, size: 20),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'بيانات تحويل الرصيد الفوري المعتمدة',
+                                            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                                          ),
+                                          Text(
+                                            'فودافون كاش (Vodafone Cash) • إنستاباي (InstaPay)',
+                                            style: GoogleFonts.cairo(color: Colors.white.withOpacity(0.8), fontSize: 11),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const Divider(color: Colors.white24, height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('رقم السداد والتحويل المعتمد:', style: GoogleFonts.cairo(color: Colors.white70, fontSize: 11.5)),
+                                        const SizedBox(height: 2),
+                                        SelectableText(
+                                          transferPhone,
+                                          style: GoogleFonts.firaCode(color: const Color(0xFF34D399), fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                                        ),
+                                      ],
+                                    ),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: branding.primaryColor,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      icon: const Icon(LucideIcons.copy, size: 16),
+                                      label: Text('نسخ الرقم', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        Clipboard.setData(ClipboardData(text: transferPhone));
+                                        SoundService.successFeedback();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('تم نسخ رقم التحويل ($transferPhone) بنجاح ✅', style: GoogleFonts.cairo()),
+                                            backgroundColor: const Color(0xFF10B981),
+                                            duration: const Duration(seconds: 2),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
                       Text('طريقة الدفع المفضلة:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
@@ -390,6 +497,97 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           isDense: true,
                         ),
+                      ),
+
+                      const SizedBox(height: 16),
+                      Text(
+                        'إرفاق سكرين شوت أو إيصال التحويل (اختياري / لتسريع التفعيل):',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _screenshotUrl != null ? const Color(0xFF10B981) : Colors.grey.withOpacity(0.25),
+                            width: _screenshotUrl != null ? 1.5 : 1,
+                          ),
+                        ),
+                        child: _screenshotUrl != null
+                            ? Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      _screenshotUrl!,
+                                      width: 54,
+                                      height: 54,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Icon(LucideIcons.image, size: 36),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(LucideIcons.checkCircle2, color: Color(0xFF10B981), size: 16),
+                                            const SizedBox(width: 6),
+                                            Text('تم رفع صورة الإيصال بنجاح', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12.5, color: const Color(0xFF10B981))),
+                                          ],
+                                        ),
+                                        Text('سيتم إرفاق الإيصال مع الطلب للتفعيل المباشر', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 20),
+                                    onPressed: () => setState(() => _screenshotUrl = null),
+                                  ),
+                                ],
+                              )
+                            : InkWell(
+                                onTap: _isUploadingScreenshot
+                                    ? null
+                                    : () async {
+                                        setState(() => _isUploadingScreenshot = true);
+                                        try {
+                                          final url = await UploadService.pickAndUploadImage(folder: 'recharge_proofs');
+                                          if (url != null && mounted) {
+                                            setState(() {
+                                              _screenshotUrl = url;
+                                              _isUploadingScreenshot = false;
+                                            });
+                                          } else if (mounted) {
+                                            setState(() => _isUploadingScreenshot = false);
+                                          }
+                                        } catch (e) {
+                                          if (mounted) setState(() => _isUploadingScreenshot = false);
+                                        }
+                                      },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (_isUploadingScreenshot)
+                                        const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                      else
+                                        Icon(LucideIcons.uploadCloud, color: branding.primaryColor, size: 22),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        _isUploadingScreenshot ? 'جاري رفع صورة الإيصال...' : 'اضغط لرفع سكرين شوت التحويل من المعرض',
+                                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: branding.primaryColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                       ),
 
                       const SizedBox(height: 20),

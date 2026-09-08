@@ -10,6 +10,7 @@ import '../../core/services/upload_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
 import 'online_lessons_management_screen.dart';
+import 'platform_analytics_screen.dart';
 
 class OnlinePlatformScreen extends ConsumerStatefulWidget {
   const OnlinePlatformScreen({super.key});
@@ -26,7 +27,7 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
   Future<void> _showGrantCourseDialog(BuildContext context, String courseId, String courseTitle) async {
     final groupsAsync = ref.read(liveGroupsProvider);
     final groups = groupsAsync.value ?? [];
-    String? selectedGroupId = groups.isNotEmpty ? groups.first['id']?.toString() : null;
+    final selectedGroupIds = <String>{};
     bool isSubmitting = false;
 
     if (groups.isEmpty) {
@@ -39,79 +40,162 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (c, setDialogState) => AlertDialog(
-          title: Row(
-            children: [
-              const Icon(LucideIcons.users, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'إتاحة الكورس لمجموعة محلية',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15),
+        builder: (c, setDialogState) {
+          int totalAffectedStudents = 0;
+          for (final g in groups) {
+            final gid = g['id']?.toString() ?? '';
+            if (selectedGroupIds.contains(gid)) {
+              totalAffectedStudents += (g['_count']?['students'] as num? ?? 0).toInt();
+            }
+          }
+
+          final allSelected = selectedGroupIds.length == groups.length;
+
+          return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(LucideIcons.users, size: 22, color: Color(0xFF10B981)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'ربط الكورس بمجموعات السنتر',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'سيتم فتح محتوى ($courseTitle) تلقائياً لجميع طلاب المجموعة المختارة على المنصة:',
-                style: GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey),
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                value: selectedGroupId,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'اختر المجموعة الميدانية',
-                  prefixIcon: Icon(LucideIcons.layers, size: 20),
-                ),
-                items: groups.map((g) {
-                  final gName = g['name']?.toString() ?? 'مجموعة';
-                  final count = g['_count']?['students'] ?? 0;
-                  return DropdownMenuItem<String>(
-                    value: g['id']?.toString(),
-                    child: Text('$gName ($count طالب)', style: GoogleFonts.cairo(fontSize: 13)),
-                  );
-                }).toList(),
-                onChanged: (val) => setDialogState(() => selectedGroupId = val),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: isSubmitting ? null : () => Navigator.pop(c), child: const Text('إلغاء')),
-            ElevatedButton(
-              onPressed: isSubmitting || selectedGroupId == null
-                  ? null
-                  : () async {
-                      setDialogState(() => isSubmitting = true);
-                      try {
-                        final res = await EduApiService().grantCourseToGroup(courseId, selectedGroupId!);
-                        SoundService.successFeedback();
-                        if (mounted) {
-                          Navigator.pop(c);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(res?['message']?.toString() ?? 'تم فتح الكورس بنجاح لطلاب المجموعة!'),
-                              backgroundColor: const Color(0xFF10B981),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 650, maxHeight: 520),
+              child: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'حدد المجموعات التي ترغب في إتاحة كورس ($courseTitle) لطلابها مجاناً وتلقائياً على المنصة:',
+                      style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            setDialogState(() {
+                              if (allSelected) {
+                                selectedGroupIds.clear();
+                              } else {
+                                for (final g in groups) {
+                                  final gid = g['id']?.toString();
+                                  if (gid != null) selectedGroupIds.add(gid);
+                                }
+                              }
+                            });
+                          },
+                          icon: Icon(allSelected ? LucideIcons.checkSquare : LucideIcons.square, size: 16),
+                          label: Text(allSelected ? 'إلغاء تحديد الكل' : 'تحديد جميع المجموعات',
+                              style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        ),
+                        if (selectedGroupIds.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            child: Text(
+                              '$totalAffectedStudents طالب مختار',
+                              style: GoogleFonts.cairo(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF059669),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const Divider(height: 12),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: groups.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final g = groups[index];
+                          final gid = g['id']?.toString() ?? '';
+                          final gName = g['name']?.toString() ?? 'مجموعة';
+                          final count = g['_count']?['students'] ?? 0;
+                          final isChecked = selectedGroupIds.contains(gid);
+
+                          return CheckboxListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                            value: isChecked,
+                            title: Text(gName, style: GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 14)),
+                            subtitle: Text('$count طالب مسجل', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+                            activeColor: const Color(0xFF10B981),
+                            onChanged: (bool? val) {
+                              setDialogState(() {
+                                if (val == true) {
+                                  selectedGroupIds.add(gid);
+                                } else {
+                                  selectedGroupIds.remove(gid);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(c),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                icon: const Icon(LucideIcons.checkCheck, size: 18),
+                onPressed: isSubmitting || selectedGroupIds.isEmpty
+                    ? null
+                    : () async {
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          final res = await EduApiService().grantCourseToGroups(courseId, selectedGroupIds.toList());
+                          SoundService.successFeedback();
+                          if (mounted) {
+                            Navigator.pop(c);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(res?['message']?.toString() ?? 'تم إتاحة الكورس بنجاح لجميع طلاب المجموعات المحددة! ✅'),
+                                backgroundColor: const Color(0xFF10B981),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSubmitting = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('تعذر ربط الكورس: $e'), backgroundColor: Colors.red),
                           );
                         }
-                      } catch (e) {
-                        setDialogState(() => isSubmitting = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('تعذر ربط الكورس: $e'), backgroundColor: Colors.red),
-                        );
-                      }
-                    },
-              child: isSubmitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('إتاحة الكورس فوراً'),
-            ),
-          ],
-        ),
+                      },
+                label: isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text('إتاحة للطلاب المحددين (${selectedGroupIds.length} مجموعة)'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -148,6 +232,7 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
           final stepTitles = ['البيانات الأساسية', 'التسعير والوصف', 'صورة الغلاف'];
 
           return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
             titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
             title: Column(
@@ -202,34 +287,37 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
                 ),
               ],
             ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: currentStep == 0
-                    ? _buildStepOneBasics(
-                        titleCtrl,
-                        years,
-                        subjects,
-                        teachers,
-                        selectedYearId,
-                        selectedSubjectId,
-                        selectedTeacherId,
-                        setDialogState,
-                        (y) => selectedYearId = y,
-                        (s) => selectedSubjectId = s,
-                        (t) => selectedTeacherId = t,
-                      )
-                    : currentStep == 1
-                        ? _buildStepTwoPricing(descCtrl, priceCtrl, branding, setDialogState)
-                        : _buildStepThreeUpload(
-                            uploadedThumbnailUrl,
-                            isUploadingImage,
-                            titleCtrl.text,
-                            branding,
-                            setDialogState,
-                            (url) => uploadedThumbnailUrl = url,
-                            (val) => isUploadingImage = val,
-                          ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 750),
+              child: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: currentStep == 0
+                      ? _buildStepOneBasics(
+                          titleCtrl,
+                          years,
+                          subjects,
+                          teachers,
+                          selectedYearId,
+                          selectedSubjectId,
+                          selectedTeacherId,
+                          setDialogState,
+                          (y) => selectedYearId = y,
+                          (s) => selectedSubjectId = s,
+                          (t) => selectedTeacherId = t,
+                        )
+                      : currentStep == 1
+                          ? _buildStepTwoPricing(descCtrl, priceCtrl, branding, setDialogState)
+                          : _buildStepThreeUpload(
+                              uploadedThumbnailUrl,
+                              isUploadingImage,
+                              titleCtrl.text,
+                              branding,
+                              setDialogState,
+                              (url) => uploadedThumbnailUrl = url,
+                              (val) => isUploadingImage = val,
+                            ),
+                ),
               ),
             ),
             actions: [
@@ -660,6 +748,16 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
         title: Text('المنصة الإلكترونية والكورسات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: const Icon(LucideIcons.barChart2),
+            tooltip: 'تحليلات المنصة',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (c) => const PlatformAnalyticsScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(LucideIcons.listVideo),
             tooltip: 'إدارة الحصص والكويزات',
             onPressed: () {
@@ -921,7 +1019,7 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                       ),
                                       icon: const Icon(LucideIcons.link2, size: 15),
-                                      label: const Text('إتاحة'),
+                                      label: const Text('ربط بمجموعات السنتر'),
                                       onPressed: () => _showGrantCourseDialog(context, courseId, title),
                                     ),
                                   ],

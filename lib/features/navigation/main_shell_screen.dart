@@ -25,6 +25,7 @@ import '../dashboard/assistant_dashboard_screen.dart';
 import '../dashboard/teacher_dashboard_screen.dart';
 import '../platform/online_platform_screen.dart';
 import '../platform/online_lessons_management_screen.dart';
+import '../platform/platform_analytics_screen.dart';
 import '../platform/platform_settings_screen.dart';
 import '../settings/branding_settings_screen.dart';
 import '../staff/staff_management_screen.dart';
@@ -489,6 +490,14 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const OnlineLessonsManagementScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.barChart2, color: Color(0xFF8B5CF6)),
+              title: Text('تحليلات وإحصائيات المنصة', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const PlatformAnalyticsScreen()));
               },
             ),
             ListTile(

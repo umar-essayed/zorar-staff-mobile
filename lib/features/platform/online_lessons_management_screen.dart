@@ -88,6 +88,7 @@ class _OnlineLessonsManagementScreenState
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
         title: Row(
           children: [
             Icon(LucideIcons.folderPlus, color: branding.primaryColor, size: 22),
@@ -96,13 +97,19 @@ class _OnlineLessonsManagementScreenState
                 style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
-        content: TextField(
-          controller: titleCtrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: "عنوان الفصل أو الأسبوع (مثال: الأسبوع الأول - المقدمة)",
-            prefixIcon: Icon(LucideIcons.bookmark, size: 18),
-            isDense: true,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 650),
+          child: SizedBox(
+            width: double.maxFinite,
+            child: TextField(
+              controller: titleCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: "عنوان الفصل أو الأسبوع (مثال: الأسبوع الأول - المقدمة)",
+                prefixIcon: Icon(LucideIcons.bookmark, size: 18),
+                isDense: true,
+              ),
+            ),
           ),
         ),
         actions: [
@@ -162,6 +169,7 @@ class _OnlineLessonsManagementScreenState
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (c, setDialogState) => AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
           title: Row(
             children: [
               Icon(isEditing ? LucideIcons.edit : LucideIcons.video, color: branding.primaryColor, size: 22),
@@ -172,7 +180,11 @@ class _OnlineLessonsManagementScreenState
               ),
             ],
           ),
-          content: SingleChildScrollView(
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 750),
+            child: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,7 +302,9 @@ class _OnlineLessonsManagementScreenState
               ],
             ),
           ),
-          actions: [
+        ),
+      ),
+      actions: [
             TextButton(
               onPressed: isSaving ? null : () => Navigator.pop(c),
               child: const Text("إلغاء"),
@@ -436,6 +450,7 @@ class _OnlineLessonsManagementScreenState
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (c, setQuizState) => AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
           title: Row(
             children: [
               Icon(LucideIcons.checkSquare, color: branding.primaryColor, size: 22),
@@ -447,9 +462,11 @@ class _OnlineLessonsManagementScreenState
               ),
             ],
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 750),
+            child: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -641,7 +658,8 @@ class _OnlineLessonsManagementScreenState
               ),
             ),
           ),
-          actions: [
+        ),
+        actions: [
             if (matchingExam != null)
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: Colors.red),

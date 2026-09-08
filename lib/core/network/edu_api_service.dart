@@ -279,6 +279,19 @@ class EduApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getGroupSessions(String groupId) async {
+    try {
+      final res = await _dio.get('/academic/groups/$groupId/sessions');
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getGroupSessions: $e');
+      return [];
+    }
+  }
+
   Future<Map<String, dynamic>?> recordAssessment(Map<String, dynamic> data) async {
     try {
       final res = await _dio.post('/attendance/assessment', data: data);
@@ -716,6 +729,39 @@ class EduApiService {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>?> grantCourseToGroups(String courseId, List<String> groupIds) async {
+    try {
+      final res = await _dio.post('/courses/$courseId/grant-groups', data: {'groupIds': groupIds});
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error grantCourseToGroups: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getPlatformAnalytics({String? teacherId}) async {
+    try {
+      final query = teacherId != null ? {'teacherId': teacherId} : null;
+      final res = await _dio.get('/courses/platform/analytics', queryParameters: query);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getPlatformAnalytics: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getTeacherPortalStats({String? teacherId}) async {
+    try {
+      final endpoint = teacherId != null ? '/teachers/$teacherId/dashboard-stats' : '/teachers/portal/stats';
+      final res = await _dio.get(endpoint);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getTeacherPortalStats: $e');
+      return null;
+    }
+  }
+
 
   Future<Map<String, dynamic>?> getCurrentTenant() async {
     try {

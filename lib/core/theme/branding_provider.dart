@@ -43,6 +43,11 @@ class BrandingNotifier extends StateNotifier<BrandingModel> {
     await BrandingService.saveBranding(state);
   }
 
+  Future<void> updateSecondaryColor(Color color) async {
+    state = state.copyWith(secondaryColor: color);
+    await BrandingService.saveBranding(state);
+  }
+
   Future<void> toggleDarkMode() async {
     state = state.copyWith(isDarkMode: !state.isDarkMode);
     await BrandingService.saveBranding(state);
