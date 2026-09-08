@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 
@@ -13,22 +15,8 @@ class ShiftClosingDialog extends ConsumerStatefulWidget {
 }
 
 class _ShiftClosingDialogState extends ConsumerState<ShiftClosingDialog> {
-  final double expectedSystemCash = 8450.0;
-  final TextEditingController countedCashCtrl = TextEditingController(text: '8450');
-  double difference = 0.0;
-
-  @override
-  void initState() {
-    super.initState();
-    countedCashCtrl.addListener(_calculateDiff);
-  }
-
-  void _calculateDiff() {
-    final counted = double.tryParse(countedCashCtrl.text) ?? 0.0;
-    setState(() {
-      difference = counted - expectedSystemCash;
-    });
-  }
+  final TextEditingController countedCashCtrl = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -39,6 +27,10 @@ class _ShiftClosingDialogState extends ConsumerState<ShiftClosingDialog> {
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final overview = ref.watch(liveFinanceOverviewProvider).value;
+    final expectedSystemCash = ((overview?['todayIncome'] ?? 0.0) as num).toDouble();
+    final counted = double.tryParse(countedCashCtrl.text) ?? expectedSystemCash;
+    final difference = counted - expectedSystemCash;
 
     return AlertDialog(
       title: Row(
@@ -83,7 +75,7 @@ class _ShiftClosingDialogState extends ConsumerState<ShiftClosingDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('عدد الإيصالات المحصلة:', style: GoogleFonts.cairo(fontSize: 12)),
-                      Text('34 إيصال', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+                      Text('${overview?['transactionsCount'] ?? 0} إيصال', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
@@ -98,10 +90,12 @@ class _ShiftClosingDialogState extends ConsumerState<ShiftClosingDialog> {
             TextField(
               controller: countedCashCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(LucideIcons.coins, size: 20),
+              decoration: InputDecoration(
+                hintText: expectedSystemCash.toStringAsFixed(0),
+                prefixIcon: const Icon(LucideIcons.coins, size: 20),
                 isDense: true,
               ),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             Row(
@@ -133,15 +127,44 @@ class _ShiftClosingDialogState extends ConsumerState<ShiftClosingDialog> {
           child: const Text('إلغاء'),
         ),
         ElevatedButton.icon(
-          icon: const Icon(LucideIcons.checkCheck, size: 16),
+          icon: _isSubmitting
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(LucideIcons.checkCheck, size: 16),
           label: const Text('إغلاق الشيفت وترحيل الدرج'),
-          onPressed: () {
-            SoundService.successFeedback();
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم تقفيل الشيفت وإرسال الإشعار للإدارة بنجاح')),
-            );
-          },
+          onPressed: _isSubmitting
+              ? null
+              : () async {
+                  setState(() => _isSubmitting = true);
+                  try {
+                    final actual = double.tryParse(countedCashCtrl.text) ?? expectedSystemCash;
+                    await EduApiService().closeShift({
+                      'actualCash': actual,
+                      'expectedCash': expectedSystemCash,
+                      'difference': difference,
+                    });
+                    ref.invalidate(liveFinanceOverviewProvider);
+                    ref.invalidate(liveTransactionsProvider);
+                    if (context.mounted) {
+                      SoundService.successFeedback();
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم تقفيل الشيفت وترحيل الدرج بنجاح ✅'),
+                          backgroundColor: Color(0xFF10B981),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      SoundService.errorFeedback();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تعذر تقفيل الشيفت: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => _isSubmitting = false);
+                  }
+                },
         ),
       ],
     );

@@ -5,7 +5,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
-import '../admissions/student_admission_public_screen.dart';
 import '../navigation/main_shell_screen.dart';
 import 'auth_provider.dart';
 
@@ -20,9 +19,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   // Mode: 0 = Unified Login, 1 = Multi-Step Registration
   int _activeTab = 0;
 
-  // Login Controllers
-  final _loginUserCtrl = TextEditingController(text: '01000000001');
-  final _loginPassCtrl = TextEditingController(text: '123456');
+  // Login Controllers (Clean & Empty)
+  final _loginUserCtrl = TextEditingController();
+  final _loginPassCtrl = TextEditingController();
   bool _loginObscure = true;
   bool _rememberMe = true;
 
@@ -144,11 +143,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   _activeTab == 0
                       ? _buildUnifiedLoginCard(branding, auth)
                       : _buildMultiStepRegisterCard(branding, auth),
-
-                  const SizedBox(height: 18),
-
-                  // Clean Admission Link
-                  _buildPublicAdmissionLink(),
                 ],
               ),
             ),
@@ -393,15 +387,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _handleLogin() async {
-    SoundService.successFeedback();
     final success = await ref
         .read(authProvider.notifier)
         .login(_loginUserCtrl.text, _loginPassCtrl.text);
 
     if (success && mounted) {
+      SoundService.successFeedback();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (ctx) => const MainShellScreen()),
+      );
+    } else if (mounted) {
+      SoundService.errorFeedback();
+      final err = ref.read(authProvider).errorMessage ?? 'بيانات الدخول غير صحيحة';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err, style: GoogleFonts.cairo()),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     }
   }
@@ -821,6 +824,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           );
 
       if (success && mounted) {
+        SoundService.successFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم إنشاء السنتر وتفعيله بنجاح! مرحباً بك في زُرار كود'),
@@ -831,53 +835,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           context,
           MaterialPageRoute(builder: (ctx) => const MainShellScreen()),
         );
-      }
-    }
-  }
-
-  // ==========================================
-  // 3. Clean Public Admission Link
-  // ==========================================
-  Widget _buildPublicAdmissionLink() {
-    return InkWell(
-      onTap: () {
-        SoundService.lightImpact();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) => const StudentAdmissionPublicScreen(),
+      } else if (mounted) {
+        SoundService.errorFeedback();
+        final err = ref.read(authProvider).errorMessage ?? 'تعذر إنشاء السنتر أو الحساب، يرجى مراجعة البيانات';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err, style: GoogleFonts.cairo()),
+            backgroundColor: Colors.redAccent,
           ),
         );
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0143A3).withOpacity(0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF0143A3).withOpacity(0.18)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(LucideIcons.clipboardEdit, color: Color(0xFF0143A3), size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'استمارة تقديم وقيد طالب جديد',
-                  style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12.5,
-                    color: const Color(0xFF0143A3),
-                  ),
-                ),
-              ],
-            ),
-            const Icon(LucideIcons.chevronLeft, color: Color(0xFF0143A3), size: 16),
-          ],
-        ),
-      ),
-    );
+      }
+    }
   }
 }

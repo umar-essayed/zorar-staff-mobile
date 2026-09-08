@@ -11,6 +11,7 @@ import '../academic/academic_groups_screen.dart';
 import '../admissions/admissions_screen.dart';
 import '../attendance/attendance_scanner_screen.dart';
 import '../auth/auth_provider.dart';
+import '../auth/auth_screen.dart';
 import '../books/books_inventory_screen.dart';
 import '../cashier/financial_ledger_screen.dart';
 import '../cashier/mobile_pos_screen.dart';
@@ -39,6 +40,31 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final branding = ref.watch(brandingProvider);
+
+    // 1. Loading State (Full Screen Loader)
+    if (auth.isLoading && auth.user == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: branding.primaryColor),
+              const SizedBox(height: 16),
+              Text(
+                'جاري تحميل بيانات النظام والتحقق من الجلسة...',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 2. Unauthenticated State (Direct to AuthScreen)
+    if (!auth.isAuthenticated || auth.user == null) {
+      return const AuthScreen();
+    }
+
     final user = auth.user;
 
     // Build role-specific tabs
@@ -388,7 +414,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             ),
             ListTile(
               leading: const Icon(LucideIcons.globe),
-              title: Text('المنصة والمتجر الإلكتروني', style: GoogleFonts.cairo(fontSize: 13)),
+              title: Text('المنصة الإلكترونية (Portal)', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const PlatformSettingsScreen()));

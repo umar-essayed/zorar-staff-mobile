@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
@@ -14,21 +16,36 @@ class MobilePosScreen extends ConsumerStatefulWidget {
 }
 
 class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
-  String selectedStudent = 'محمود عبد الرازق حسن (STU-1004)';
-  String selectedItem = 'اشتراك شهر سبتمبر (4 حصص) - 450 ج.م';
+  Map<String, dynamic>? selectedStudentObj;
+  String selectedItem = 'اشتراك شهر جديد - 450 ج.م';
   String paymentMethod = 'كاش';
   double amount = 450.0;
   double discount = 0.0;
+  bool _isProcessing = false;
 
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final studentsAsync = ref.watch(liveStudentsProvider);
     final netTotal = (amount - discount).clamp(0.0, 999999.0);
+
+    final studentsList = studentsAsync.value ?? [];
+    if (selectedStudentObj == null && studentsList.isNotEmpty) {
+      selectedStudentObj = studentsList.first;
+    }
+
+    final studentName = selectedStudentObj?['name']?.toString() ?? 'اختر طالباً';
+    final studentCode = selectedStudentObj?['studentCode']?.toString() ?? '';
+    final studentPhone = selectedStudentObj?['phone']?.toString() ?? '';
+    final guardianPhone = selectedStudentObj?['guardianPhone']?.toString() ?? studentPhone;
+    final groupName = (selectedStudentObj?['groups'] as List?)?.isNotEmpty == true
+        ? selectedStudentObj!['groups'][0]['group']?['name']?.toString() ?? 'مجموعة عامة'
+        : 'طالب مسجل بالسنتر';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'نقطة البيع والخزينة',
+          'نقطة البيع والخزينة POS',
           style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
       ),
@@ -62,11 +79,11 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          selectedStudent,
+                          '$studentName ${studentCode.isNotEmpty ? '($studentCode)' : ''}',
                           style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         Text(
-                          '3ث لغة عربية • مجموعة (أ) • أ/ أحمد كمال',
+                          groupName,
                           style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
                         ),
                       ],
@@ -75,7 +92,9 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                   IconButton(
                     icon: const Icon(LucideIcons.arrowRightLeft, size: 20),
                     tooltip: 'تغيير الطالب',
-                    onPressed: () {},
+                    onPressed: () {
+                      _showStudentPickerModal(context, studentsList);
+                    },
                   ),
                 ],
               ),
@@ -199,20 +218,132 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                icon: const Icon(LucideIcons.printer, size: 20),
+                icon: _isProcessing
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(LucideIcons.printer, size: 20),
                 label: Text(
-                  'تأكيد الدفع والطباعة',
+                  _isProcessing ? 'جاري تسجيل الحركة بالخزينة...' : 'تأكيد الدفع والطباعة',
                   style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
-                onPressed: () {
-                  SoundService.successFeedback();
-                  _showReceiptDialog(context, branding.centerName, netTotal);
-                },
+                onPressed: _isProcessing
+                    ? null
+                    : () async {
+                        if (studentCode.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('يرجى اختيار طالب أولاً')),
+                          );
+                          return;
+                        }
+                        setState(() => _isProcessing = true);
+                        try {
+                          String methodBackend = 'CASH';
+                          if (paymentMethod == 'فودافون كاش') methodBackend = 'VODAFONE_CASH';
+                          if (paymentMethod == 'إنستاباي') methodBackend = 'INSTAPAY';
+
+                          final res = await EduApiService().createTransaction({
+                            'studentCode': studentCode,
+                            'amount': netTotal,
+                            'method': methodBackend,
+                            'type': selectedItem.contains('شهر') ? 'MONTHLY_SUBSCRIPTION' : selectedItem.contains('حصة') ? 'SINGLE_SESSION' : 'BOOK_PURCHASE',
+                            'notes': selectedItem,
+                          });
+
+                          ref.invalidate(liveTransactionsProvider);
+                          ref.invalidate(liveFinanceOverviewProvider);
+
+                          final recNo = res?['receiptNumber']?.toString() ?? 'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                          SoundService.successFeedback();
+                          if (context.mounted) {
+                            _showReceiptDialog(
+                              context,
+                              branding.centerName,
+                              netTotal,
+                              receiptNo: recNo,
+                              studentName: studentName,
+                              parentPhone: guardianPhone,
+                            );
+                          }
+                        } catch (e) {
+                          SoundService.errorFeedback();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('تعذر تسجيل عملية الدفع: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isProcessing = false);
+                        }
+                      },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showStudentPickerModal(BuildContext context, List<Map<String, dynamic>> students) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final filtered = students.where((s) {
+              if (query.isEmpty) return true;
+              final q = query.toLowerCase();
+              return (s['name']?.toString().toLowerCase().contains(q) ?? false) ||
+                  (s['studentCode']?.toString().toLowerCase().contains(q) ?? false) ||
+                  (s['phone']?.toString().contains(q) ?? false);
+            }).toList();
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              height: MediaQuery.of(context).size.height * 0.75,
+              child: Column(
+                children: [
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 12),
+                  Text('اختر طالباً للتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'ابحث باسم الطالب، الكود، أو رقم الهاتف...',
+                      prefixIcon: const Icon(LucideIcons.search, size: 20),
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (val) => setModalState(() => query = val),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Center(child: Text('لا يوجد طلاب يطابقون البحث', style: GoogleFonts.cairo(color: Colors.grey)))
+                        : ListView.separated(
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, idx) {
+                              final st = filtered[idx];
+                              return ListTile(
+                                leading: const CircleAvatar(child: Icon(LucideIcons.user, size: 18)),
+                                title: Text(st['name']?.toString() ?? '', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                subtitle: Text('كود: ${st['studentCode'] ?? ''} • ${st['phone'] ?? ''}', style: GoogleFonts.cairo(fontSize: 11.5)),
+                                onTap: () {
+                                  setState(() => selectedStudentObj = st);
+                                  Navigator.pop(ctx);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -247,7 +378,14 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
     );
   }
 
-  void _showReceiptDialog(BuildContext context, String centerName, double total) {
+  void _showReceiptDialog(
+    BuildContext context,
+    String centerName,
+    double total, {
+    required String receiptNo,
+    required String studentName,
+    required String parentPhone,
+  }) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -272,7 +410,7 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Divider(),
-            Text('الطالب: $selectedStudent', style: GoogleFonts.cairo(fontSize: 12.5)),
+            Text('الطالب: $studentName', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text('البند: $selectedItem', style: GoogleFonts.cairo(fontSize: 12)),
             const SizedBox(height: 4),
@@ -281,7 +419,7 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
             Text('المبلغ المحصل: ${total.toStringAsFixed(0)} ج.م',
                 style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
             const Divider(),
-            Text('رقم الإيصال: REC-2026-0811', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+            Text('رقم الإيصال: $receiptNo', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
           ],
         ),
         actions: [
@@ -292,11 +430,11 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
               Navigator.pop(ctx);
               WhatsAppService.sendParentReceipt(
                 context: context,
-                parentPhone: '01012345678',
-                studentName: selectedStudent,
+                parentPhone: parentPhone,
+                studentName: studentName,
                 itemTitle: selectedItem,
                 amount: total,
-                receiptNumber: 'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                receiptNumber: receiptNo,
                 centerName: centerName,
               );
             },

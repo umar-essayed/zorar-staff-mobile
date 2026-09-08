@@ -13,8 +13,8 @@ class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.defaultApiBaseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -30,6 +30,13 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+
+          // If payload is FormData (file upload), let Dio calculate boundary automatically
+          if (options.data is FormData) {
+            options.headers.remove('Content-Type');
+            options.headers.remove('content-type');
+          }
+
           final customUrl = prefs.getString(AppConstants.keyApiUrl);
           if (customUrl != null && customUrl.isNotEmpty) {
             options.baseUrl = customUrl;
@@ -55,7 +62,7 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) {
-          debugPrint('API Error: [${e.response?.statusCode}] ${e.message}');
+          debugPrint('API Error: [${e.response?.statusCode}] ${e.message} => ${e.response?.data}');
           return handler.next(e);
         },
       ),

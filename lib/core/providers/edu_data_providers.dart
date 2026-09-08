@@ -46,3 +46,43 @@ final liveGroupAttendanceProvider = FutureProvider.autoDispose.family<List<Map<S
   if (groupId.isEmpty) return [];
   return await EduApiService().getGroupAttendance(groupId);
 });
+
+// 9. Finance Overview & Analytics Provider
+final liveFinanceOverviewProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return await EduApiService().getFinanceOverview();
+});
+
+// 10. Financial Transactions Provider
+final transactionsMethodFilterProvider = StateProvider<String>((ref) => 'الكل');
+final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'الكل');
+final transactionsTeacherFilterProvider = StateProvider<String>((ref) => 'الكل');
+final transactionsSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final liveTransactionsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final method = ref.watch(transactionsMethodFilterProvider);
+  final type = ref.watch(transactionsTypeFilterProvider);
+  final teacher = ref.watch(transactionsTeacherFilterProvider);
+  final search = ref.watch(transactionsSearchQueryProvider);
+
+  return await EduApiService().getTransactions(
+    method: method,
+    type: type,
+    teacherId: teacher,
+    search: search,
+  );
+});
+
+// 11. Staff & Assistants Provider
+final liveStaffProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return await EduApiService().getStaff();
+});
+
+// 12. Low Stock Books Provider
+final liveLowStockBooksProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return await EduApiService().getLowStockBooks();
+});
+
+// 13. Daily Report Provider
+final liveDailyReportProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String?>((ref, date) async {
+  return await EduApiService().getDailyFinanceReport(date: date);
+});

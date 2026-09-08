@@ -64,7 +64,7 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
       final bytes = await picked.readAsBytes();
       final url = await EduApiService().uploadImageFile(bytes, folder: isLogo ? 'logos' : 'banners');
 
-      if (url != null) {
+      if (url != null && url.isNotEmpty) {
         SoundService.successFeedback();
         if (isLogo) {
           ref.read(brandingProvider.notifier).updateLogoUrl(url);
@@ -79,6 +79,8 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
             ),
           );
         }
+      } else {
+        throw Exception('فشل التخزين السحابي في حفظ الصورة');
       }
     } catch (e) {
       SoundService.errorFeedback();

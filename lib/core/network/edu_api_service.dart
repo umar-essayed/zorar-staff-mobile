@@ -274,16 +274,61 @@ class EduApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getLowStockBooks() async {
+    try {
+      final res = await _dio.get('/books/low-stock');
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getLowStockBooks: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createBook(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/books', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error createBook: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateBook(String id, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/books/$id', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error updateBook: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteBook(String id) async {
+    try {
+      await _dio.delete('/books/$id');
+      return true;
+    } catch (e) {
+      debugPrint('Error deleteBook: $e');
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>?> sellBook({
     required String bookId,
     required String studentCode,
     int quantity = 1,
+    String paymentMethod = 'CASH',
   }) async {
     try {
       final res = await _dio.post('/books/sell', data: {
         'bookId': bookId,
         'studentCode': studentCode,
         'quantity': quantity,
+        'paymentMethod': paymentMethod,
       });
       return Map<String, dynamic>.from(res.data);
     } catch (e) {
@@ -293,7 +338,181 @@ class EduApiService {
   }
 
   // ==========================================
-  // 7. Cloudflare R2 Uploads API
+  // 7. Finance, Cashier & Analytics APIs
+  // ==========================================
+  Future<Map<String, dynamic>> getFinanceOverview() async {
+    try {
+      final res = await _dio.get('/finance/overview');
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Error getFinanceOverview: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getTransactions({
+    int page = 1,
+    int limit = 50,
+    String? method,
+    String? type,
+    String? teacherId,
+    String? search,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
+      if (method != null && method != 'الكل') queryParams['method'] = method;
+      if (type != null && type != 'الكل') queryParams['type'] = type;
+      if (teacherId != null && teacherId != 'الكل') queryParams['teacherId'] = teacherId;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+      final res = await _dio.get('/finance/transactions', queryParameters: queryParams);
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return {'items': [], 'totalCount': 0};
+    } catch (e) {
+      debugPrint('Error getTransactions: $e');
+      return {'items': [], 'totalCount': 0};
+    }
+  }
+
+  Future<Map<String, dynamic>?> createTransaction(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/finance/transactions', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error createTransaction: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> closeShift(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/finance/shift-closing', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error closeShift: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getDailyFinanceReport({String? date}) async {
+    try {
+      final q = date != null ? '?date=$date' : '';
+      final res = await _dio.get('/finance/daily-report$q');
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Error getDailyFinanceReport: $e');
+      return {};
+    }
+  }
+
+  // ==========================================
+  // 8. Staff & Assistants Management APIs
+  // ==========================================
+  Future<List<Map<String, dynamic>>> getStaff() async {
+    try {
+      final res = await _dio.get('/tenants/staff');
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getStaff: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createStaff(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/tenants/staff', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error createStaff: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateStaff(String id, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/tenants/staff/$id', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error updateStaff: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteStaff(String id) async {
+    try {
+      await _dio.delete('/tenants/staff/$id');
+      return true;
+    } catch (e) {
+      debugPrint('Error deleteStaff: $e');
+      return false;
+    }
+  }
+
+  // ==========================================
+  // 9. Teachers & Settlements APIs
+  // ==========================================
+  Future<List<Map<String, dynamic>>> getTeachers() async {
+    try {
+      final res = await _dio.get('/teachers');
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getTeachers: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> calculateTeacherPayout(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/teachers/payouts/calculate', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error calculateTeacherPayout: $e');
+      rethrow;
+    }
+  }
+
+  // ==========================================
+  // 10. Storefront / Online Platform APIs
+  // ==========================================
+  Future<bool> updateStorefrontConfig(Map<String, dynamic> config) async {
+    try {
+      final res = await _dio.put('/storefront/config', data: config);
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('Error updateStorefrontConfig: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getPublicStorefront(String host) async {
+    try {
+      final res = await _dio.get('/storefront/public/$host');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getPublicStorefront: $e');
+      return null;
+    }
+  }
+
+  // ==========================================
+  // 11. Cloudflare R2 Uploads API
   // ==========================================
   Future<String?> uploadImageFile(dynamic file, {String folder = 'general'}) async {
     try {
@@ -308,30 +527,33 @@ class EduApiService {
           'file': MultipartFile.fromBytes(file, filename: 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg'),
         });
       } else {
-        return null;
+        throw Exception('صيغة الملف غير مدعومة');
       }
 
       final res = await _dio.post(
         '/uploads?folder=$folder',
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
       );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final data = res.data;
         if (data['file'] != null && data['file']['url'] != null) {
-          return data['file']['url'].toString();
+          String url = data['file']['url'].toString();
+          if (url.startsWith('/')) {
+            url = '${AppConstants.productionApiBaseUrl}$url';
+          }
+          return url;
         }
       }
-      return null;
+      throw Exception(res.data?['message'] ?? 'فشل خادم التخزين في حفظ الملف');
     } catch (e) {
       debugPrint('Error uploadImageFile: $e');
-      return null;
+      rethrow;
     }
   }
 
   // ==========================================
-  // 8. Branding & Tenant Settings
+  // 12. Branding & Tenant Settings
   // ==========================================
   Future<bool> updateBranding(Map<String, dynamic> brandingData) async {
     try {

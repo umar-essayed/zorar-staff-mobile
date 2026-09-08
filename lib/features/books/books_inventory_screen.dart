@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../cashier/mobile_pos_screen.dart';
@@ -25,6 +27,18 @@ class BookInventoryItem {
     required this.stock,
     required this.sold,
   });
+
+  factory BookInventoryItem.fromMap(Map<String, dynamic> map) {
+    return BookInventoryItem(
+      id: map['id']?.toString() ?? '',
+      title: map['title']?.toString() ?? 'ملزمة دراسية',
+      teacher: map['teacher']?['name']?.toString() ?? 'إدارة السنتر',
+      grade: map['academicYear']?['name']?.toString() ?? '',
+      price: (map['salePrice'] as num?)?.toDouble() ?? 0.0,
+      stock: (map['stockQuantity'] as num?)?.toInt() ?? 0,
+      sold: (map['_count']?['sales'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 class BooksInventoryScreen extends ConsumerStatefulWidget {
@@ -37,48 +51,13 @@ class BooksInventoryScreen extends ConsumerStatefulWidget {
 class _BooksInventoryScreenState extends ConsumerState<BooksInventoryScreen> {
   String searchQuery = '';
 
-  late final List<BookInventoryItem> books = [
-    BookInventoryItem(
-      id: 'BOK-01',
-      title: 'ملزمة النحو والتدريبات الشاملة 2026',
-      teacher: 'أ/ أحمد كمال (عربي)',
-      grade: 'الصف الثالث الثانوي',
-      price: 85,
-      stock: 45,
-      sold: 140,
-    ),
-    BookInventoryItem(
-      id: 'BOK-02',
-      title: 'مذكرة بنك أسئلة الكيمياء العضوية',
-      teacher: 'أ/ حسام فؤاد (كيمياء)',
-      grade: 'الصف الثاني الثانوي',
-      price: 90,
-      stock: 8, // Low stock!
-      sold: 92,
-    ),
-    BookInventoryItem(
-      id: 'BOK-03',
-      title: 'كتاب شرح الفيزياء وقوانين نيوتن',
-      teacher: 'أ/ محمد إبراهيم (فيزياء)',
-      grade: 'الصف الأول الثانوي',
-      price: 110,
-      stock: 32,
-      sold: 68,
-    ),
-    BookInventoryItem(
-      id: 'BOK-04',
-      title: 'ملزمة مراجعة البلاغة والنصوص',
-      teacher: 'أ/ أحمد كمال (عربي)',
-      grade: 'الصف الثالث الثانوي',
-      price: 75,
-      stock: 60,
-      sold: 115,
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final booksAsync = ref.watch(liveBooksProvider);
+
+    final rawList = booksAsync.value ?? [];
+    final books = rawList.map((m) => BookInventoryItem.fromMap(m)).toList();
 
     final filtered = books.where((b) {
       if (searchQuery.isNotEmpty) {
@@ -109,52 +88,89 @@ class _BooksInventoryScreenState extends ConsumerState<BooksInventoryScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Search & Fast Stats Header
-          Container(
-            padding: const EdgeInsets.all(12),
-            color: Theme.of(context).cardColor,
-            child: Column(
-              children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'ابحث باسم الملزمة، كودها، أو اسم المدرس...',
-                    prefixIcon: Icon(LucideIcons.search, size: 20),
-                    isDense: true,
-                  ),
-                  onChanged: (val) => setState(() => searchQuery = val),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          SoundService.lightImpact();
+          ref.invalidate(liveBooksProvider);
+          ref.invalidate(liveLowStockBooksProvider);
+        },
+        child: Column(
+          children: [
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: 'ابحث باسم الملزمة أو المدرس أو الكود...',
+                  prefixIcon: Icon(LucideIcons.search, size: 20),
+                  isDense: true,
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'إجمالي الملازم المسجلة: ${books.length}',
-                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
-                    ),
-                    Text(
-                      'إجمالي المبيعات: ${books.fold<int>(0, (sum, b) => sum + b.sold)} نسخة',
-                      style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
+                onChanged: (val) {
+                  setState(() => searchQuery = val);
+                },
+              ),
             ),
-          ),
 
-          // Inventory List
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(14),
-              itemCount: filtered.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (ctx, idx) {
-                final item = filtered[idx];
-                final isLowStock = item.stock <= 10;
+            // Summary Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: branding.primaryColor.withOpacity(0.08),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'إجمالي الملازم: ${books.length}',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12.5),
+                  ),
+                  Text(
+                    '${books.where((b) => b.stock <= 10).length} ملزمة شارفت على النفاد ⚠️',
+                    style: GoogleFonts.cairo(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-                return Card(
+            // List of Books
+            Expanded(
+              child: booksAsync.when(
+                loading: () => Center(
                   child: Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: CircularProgressIndicator(color: branding.primaryColor),
+                  ),
+                ),
+                error: (err, _) => Center(
+                  child: Text('تعذر تحميل مخزن الملازم: $err', style: GoogleFonts.cairo(color: Colors.red)),
+                ),
+                data: (_) {
+                  if (filtered.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.bookOpen, size: 48, color: Colors.grey.withOpacity(0.5)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'لا توجد ملازم مضافة للمخزن بعد',
+                            style: GoogleFonts.cairo(color: Colors.grey, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (ctx, idx) {
+                      final item = filtered[idx];
+                      final isLowStock = item.stock <= 10;
+                      return Card(
+                        child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,10 +256,13 @@ class _BooksInventoryScreenState extends ConsumerState<BooksInventoryScreen> {
                     ),
                   ),
                 );
-              },
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

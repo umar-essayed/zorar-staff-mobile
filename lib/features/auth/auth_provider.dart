@@ -103,7 +103,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = prefs.getString(AppConstants.keyAuthToken);
       final rawUser = prefs.getString(AppConstants.keyUserData);
 
-      if (token != null && rawUser != null) {
+      if (token != null && rawUser != null && !token.startsWith('demo-')) {
         final userMap = jsonDecode(rawUser) as Map<String, dynamic>;
         state = state.copyWith(
           isAuthenticated: true,
@@ -115,31 +115,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrint('Error loading stored session: $e');
     }
 
-    // Default to a pre-authenticated Admin demo state if no session exists
-    final defaultDemoUser = const UserModel(
-      id: 'demo-admin-1',
-      name: 'أ/ عمر (إدارة السنتر)',
-      role: AppConstants.roleOwner,
-      email: 'admin@zorar.app',
-      phone: '01000000001',
-    );
-    state = state.copyWith(
-      isAuthenticated: true,
-      user: defaultDemoUser,
-    );
+    // Unauthenticated state by default (no fake bypass)
+    state = const AuthState(isAuthenticated: false, user: null);
   }
 
-  Future<bool> login(String usernameOrPhone, String password) async {
+  Future<bool> login(String phone, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
+      final cleanPhone = phone.trim();
+      final cleanPassword = password.trim();
+
+      if (cleanPhone.isEmpty || cleanPassword.isEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'يرجى إدخال رقم الهاتف وكلمة المرور',
+        );
+        return false;
+      }
+
       final response = await ApiClient().dio.post('/auth/login', data: {
-        'username': usernameOrPhone.trim(),
-        'password': password.trim(),
+        'phone': cleanPhone,
+        'password': cleanPassword,
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
-        final token = data['access_token'] ?? data['token'];
+        final token = data['accessToken'] ?? data['access_token'] ?? data['token'];
         final userMap = data['user'] ?? {};
 
         final user = UserModel.fromJson(userMap);
@@ -153,67 +154,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isLoading: false,
           isAuthenticated: true,
           user: user,
+          errorMessage: null,
         );
         return true;
+      } else {
+        final msg = response.data?['message'] ?? 'فشل تسجيل الدخول';
+        state = state.copyWith(isLoading: false, errorMessage: msg is List ? msg.join(', ') : msg.toString());
+        return false;
       }
-    } catch (e) {
+    } catch (e: dynamic) {
       debugPrint('Live API login error: $e');
+      String errorMsg = 'بيانات الدخول غير صحيحة أو السيرفر غير متاح';
+      if (e is DioException) {
+        final resData = e.response?.data;
+        if (resData != null && resData['message'] != null) {
+          final m = resData['message'];
+          errorMsg = m is List ? m.join(', ') : m.toString();
+        } else if (e.response?.statusCode == 401) {
+          errorMsg = 'رقم الهاتف أو كلمة المرور غير صحيحة';
+        } else if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+          errorMsg = 'انتهت مهلة الاتصال بالسيرفر، يرجى المحاولة مجدداً';
+        }
+      }
+      state = state.copyWith(isLoading: false, errorMessage: errorMsg);
+      return false;
     }
-
-    // Smart Fallback & Automatic Role Detection for immediate demo/offline:
-    final cleanInput = usernameOrPhone.toLowerCase().trim();
-    UserModel detectedUser;
-
-    if (cleanInput.contains('teach') ||
-        cleanInput.contains('مدرس') ||
-        cleanInput.contains('معلم') ||
-        cleanInput == '01222222223') {
-      detectedUser = const UserModel(
-        id: 'demo-teacher-1',
-        name: 'أ/ أحمد كمال (معلم لغة عربية)',
-        role: AppConstants.roleTeacher,
-        email: 'teacher@zorar.app',
-        phone: '01222222223',
-        teacherId: 'teacher-101',
-      );
-    } else if (cleanInput.contains('assist') ||
-        cleanInput.contains('مساعد') ||
-        cleanInput.contains('استقبال') ||
-        cleanInput.contains('كاشير') ||
-        cleanInput == '01111111112') {
-      detectedUser = const UserModel(
-        id: 'demo-assistant-1',
-        name: 'سارة أحمد (استقبال ومساعد سنتر)',
-        role: AppConstants.roleAssistant,
-        email: 'assistant@zorar.app',
-        phone: '01111111112',
-      );
-    } else {
-      // Default: Center Admin / Owner
-      final displayName = cleanInput.contains('@')
-          ? cleanInput.split('@')[0]
-          : cleanInput.isNotEmpty
-              ? 'إدارة السنتر ($cleanInput)'
-              : 'أ/ عمر (إدارة السنتر)';
-      detectedUser = UserModel(
-        id: 'owner-auto-${DateTime.now().millisecondsSinceEpoch}',
-        name: displayName,
-        role: AppConstants.roleOwner,
-        email: cleanInput.contains('@') ? cleanInput : 'admin@zorar.app',
-        phone: cleanInput.isNotEmpty ? cleanInput : '01000000001',
-      );
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(AppConstants.keyUserData, jsonEncode(detectedUser.toJson()));
-    await prefs.setString(AppConstants.keyAuthToken, 'demo-token-${DateTime.now().millisecondsSinceEpoch}');
-
-    state = state.copyWith(
-      isLoading: false,
-      isAuthenticated: true,
-      user: detectedUser,
-    );
-    return true;
   }
 
   Future<bool> registerTenant({
@@ -227,42 +192,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final response = await ApiClient().dio.post('/tenants', data: {
-        'name': centerName,
+      final cleanSubdomain = subdomain.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), '');
+      if (cleanSubdomain.isEmpty) {
+        state = state.copyWith(isLoading: false, errorMessage: 'يرجى إدخال اسم نطاق فرعي صحيح (أحرف إنجليزية وأرقام)');
+        return false;
+      }
+
+      // Step 1: Create Tenant on backend
+      final tenantRes = await ApiClient().dio.post('/tenants', data: {
+        'name': centerName.trim(),
         'type': orgType.contains('مدرس') ? 'TEACHER' : 'CENTER',
-        'subdomain': subdomain,
-        'ownerName': ownerName,
-        'phone': phone,
-        'email': email,
-        'password': password,
+        'subdomain': cleanSubdomain,
       });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return await login(email.isNotEmpty ? email : phone, password);
-      }
-    } catch (e) {
+      final tenantData = tenantRes.data;
+      final tenantId = tenantData['id'] ?? tenantData['tenantId'];
+
+      // Step 2: Register User as TENANT_ADMIN
+      await ApiClient().dio.post('/auth/register', data: {
+        'name': ownerName.trim(),
+        'phone': phone.trim(),
+        'password': password.trim(),
+        'role': 'TENANT_ADMIN',
+        'tenantId': tenantId,
+      });
+
+      // Step 3: Login with newly created credentials
+      return await login(phone.trim(), password.trim());
+    } catch (e: dynamic) {
       debugPrint('Tenant registration API error: $e');
+      String errorMsg = 'تعذر إنشاء الحساب الجديد، يرجى مراجعة البيانات';
+      if (e is DioException) {
+        final resData = e.response?.data;
+        if (resData != null && resData['message'] != null) {
+          final m = resData['message'];
+          errorMsg = m is List ? m.join(', ') : m.toString();
+        } else if (e.response?.statusCode == 409) {
+          errorMsg = 'النطاق الفرعي أو رقم الهاتف مسجل بالفعل';
+        }
+      }
+      state = state.copyWith(isLoading: false, errorMessage: errorMsg);
+      return false;
     }
-
-    // Local Fallback: Create account immediately
-    final newUser = UserModel(
-      id: 'tenant-owner-${DateTime.now().millisecondsSinceEpoch}',
-      name: '$ownerName ($centerName)',
-      role: orgType.contains('مدرس') ? AppConstants.roleTeacher : AppConstants.roleOwner,
-      email: email,
-      phone: phone,
-      tenantId: subdomain,
-    );
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(AppConstants.keyUserData, jsonEncode(newUser.toJson()));
-    await prefs.setString(AppConstants.keyAuthToken, 'demo-token-${DateTime.now().millisecondsSinceEpoch}');
-
-    state = state.copyWith(
-      isLoading: false,
-      isAuthenticated: true,
-      user: newUser,
-    );
+  }
     return true;
   }
 

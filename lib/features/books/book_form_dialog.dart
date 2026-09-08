@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 
@@ -16,9 +18,10 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final titleCtrl = TextEditingController();
   final priceCtrl = TextEditingController(text: '85');
-  final stockCtrl = TextEditingController(text: '100');
-  String selectedTeacher = 'أ/ أحمد كمال (لغة عربية)';
-  String selectedGrade = 'الصف الثالث الثانوي';
+  final stockCtrl = TextEditingController(text: '50');
+  String? selectedTeacherId;
+  String? selectedYearId;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -31,6 +34,18 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final teachersAsync = ref.watch(liveTeachersProvider);
+    final yearsAsync = ref.watch(liveAcademicYearsProvider);
+
+    final teachers = teachersAsync.value ?? [];
+    final years = yearsAsync.value ?? [];
+
+    if (selectedTeacherId == null && teachers.isNotEmpty) {
+      selectedTeacherId = teachers.first['id']?.toString();
+    }
+    if (selectedYearId == null && years.isNotEmpty) {
+      selectedYearId = years.first['id']?.toString();
+    }
 
     return AlertDialog(
       title: Row(
@@ -65,17 +80,31 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
               Text('المعلم المسؤول:', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: selectedTeacher,
+                value: selectedTeacherId,
                 isExpanded: true,
                 decoration: const InputDecoration(isDense: true),
-                items: const [
-                  DropdownMenuItem(value: 'أ/ أحمد كمال (لغة عربية)', child: Text('أ/ أحمد كمال (لغة عربية)')),
-                  DropdownMenuItem(value: 'أ/ حسام فؤاد (كيمياء)', child: Text('أ/ حسام فؤاد (كيمياء)')),
-                  DropdownMenuItem(value: 'أ/ محمد إبراهيم (فيزياء)', child: Text('أ/ محمد إبراهيم (فيزياء)')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => selectedTeacher = val);
-                },
+                items: teachers.map((t) {
+                  return DropdownMenuItem<String>(
+                    value: t['id']?.toString(),
+                    child: Text(t['name']?.toString() ?? 'معلم'),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => selectedTeacherId = val),
+              ),
+              const SizedBox(height: 12),
+              Text('السنة الدراسية:', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: selectedYearId,
+                isExpanded: true,
+                decoration: const InputDecoration(isDense: true),
+                items: years.map((y) {
+                  return DropdownMenuItem<String>(
+                    value: y['id']?.toString(),
+                    child: Text(y['name']?.toString() ?? 'سنة دراسية'),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => selectedYearId = val),
               ),
               const SizedBox(height: 12),
               Row(
@@ -90,6 +119,7 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
                           controller: priceCtrl,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(isDense: true),
+                          validator: (val) => val == null || val.isEmpty ? 'السعر مطلوب' : null,
                         ),
                       ],
                     ),
@@ -99,12 +129,13 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('الكمية الأولية:', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('الكمية المطبوعة:', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: stockCtrl,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(isDense: true),
+                          validator: (val) => val == null || val.isEmpty ? 'الكمية مطلوبة' : null,
                         ),
                       ],
                     ),
@@ -121,20 +152,47 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
           child: const Text('إلغاء'),
         ),
         ElevatedButton.icon(
-          icon: const Icon(LucideIcons.check, size: 16),
+          icon: _isSaving
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(LucideIcons.check, size: 16),
           label: const Text('حفظ وإضافة للمخزن'),
-          onPressed: () {
-            if (_formKey.currentState?.validate() ?? false) {
-              SoundService.successFeedback();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF10B981),
-                  content: Text('تم إضافة الملزمة ${titleCtrl.text} إلى المخزن بنجاح!'),
-                ),
-              );
-            }
-          },
+          onPressed: _isSaving
+              ? null
+              : () async {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    setState(() => _isSaving = true);
+                    try {
+                      await EduApiService().createBook({
+                        'title': titleCtrl.text.trim(),
+                        'teacherId': selectedTeacherId,
+                        'academicYearId': selectedYearId,
+                        'salePrice': double.tryParse(priceCtrl.text) ?? 0.0,
+                        'stockQuantity': int.tryParse(stockCtrl.text) ?? 0,
+                      });
+                      ref.invalidate(liveBooksProvider);
+                      ref.invalidate(liveLowStockBooksProvider);
+                      if (context.mounted) {
+                        SoundService.successFeedback();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFF10B981),
+                            content: Text('تم إضافة الملزمة ${titleCtrl.text} إلى المخزن بنجاح! ✅'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        SoundService.errorFeedback();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('تعذر حفظ الملزمة: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isSaving = false);
+                    }
+                  }
+                },
         ),
       ],
     );

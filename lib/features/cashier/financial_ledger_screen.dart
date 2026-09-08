@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/export_service.dart';
+import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 
 class PaymentTransaction {
@@ -12,9 +14,9 @@ class PaymentTransaction {
   final String groupName;
   final String teacherName;
   final String academicYear;
-  final String paymentType; // 'اشتراك شهر', 'حصة', 'ملزمة'
+  final String paymentType;
   final double amount;
-  final String paymentMethod; // 'كاش', 'فودافون كاش', 'إنستاباي'
+  final String paymentMethod;
   final String assistantName;
   final DateTime timestamp;
 
@@ -31,6 +33,51 @@ class PaymentTransaction {
     required this.assistantName,
     required this.timestamp,
   });
+
+  factory PaymentTransaction.fromMap(Map<String, dynamic> map) {
+    String methodArabic = 'كاش';
+    final m = map['method']?.toString().toUpperCase() ?? '';
+    if (m.contains('VODAFONE') || m.contains('WALLET')) {
+      methodArabic = 'فودافون كاش';
+    } else if (m.contains('INSTAPAY')) {
+      methodArabic = 'إنستاباي';
+    } else if (m.contains('CARD')) {
+      methodArabic = 'فيزا / بطاقة';
+    }
+
+    String typeArabic = 'سداد مالي';
+    final t = map['type']?.toString().toUpperCase() ?? '';
+    if (t.contains('MONTHLY')) {
+      typeArabic = 'اشتراك شهر';
+    } else if (t.contains('SESSION')) {
+      typeArabic = 'رسوم حصة';
+    } else if (t.contains('BOOK')) {
+      typeArabic = 'ملزمة دراسية';
+    } else if (map['notes'] != null && map['notes'].toString().isNotEmpty) {
+      typeArabic = map['notes'].toString();
+    }
+
+    DateTime parsedDate = DateTime.now();
+    if (map['createdAt'] != null) {
+      try {
+        parsedDate = DateTime.parse(map['createdAt'].toString());
+      } catch (_) {}
+    }
+
+    return PaymentTransaction(
+      id: map['receiptNumber']?.toString() ?? map['id']?.toString() ?? 'REC',
+      studentName: map['student']?['name']?.toString() ?? 'طالب سنتر',
+      studentCode: map['student']?['studentCode']?.toString() ?? '',
+      groupName: map['group']?['name']?.toString() ?? 'مجموعة عامة',
+      teacherName: map['teacher']?['name']?.toString() ?? 'السنتر',
+      academicYear: map['academicYear']?['name']?.toString() ?? '',
+      paymentType: typeArabic,
+      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      paymentMethod: methodArabic,
+      assistantName: map['assistant']?['name']?.toString() ?? 'الاستقبال',
+      timestamp: parsedDate,
+    );
+  }
 }
 
 class FinancialLedgerScreen extends ConsumerStatefulWidget {
@@ -42,73 +89,19 @@ class FinancialLedgerScreen extends ConsumerStatefulWidget {
 
 class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
   String selectedFilterMethod = 'الكل';
-  String selectedTeacher = 'الكل';
   String searchQuery = '';
-
-  final List<PaymentTransaction> transactions = [
-    PaymentTransaction(
-      id: 'TXN-9021',
-      studentName: 'محمود عبد الرازق حسن',
-      studentCode: 'STU-1004',
-      groupName: '3ث لغة عربية (أ)',
-      teacherName: 'أ/ أحمد كمال',
-      academicYear: 'الصف الثالث الثانوي',
-      paymentType: 'اشتراك شهر سبتمبر (4 حصص)',
-      amount: 450.0,
-      paymentMethod: 'كاش',
-      assistantName: 'سارة أحمد',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-    ),
-    PaymentTransaction(
-      id: 'TXN-9020',
-      studentName: 'سلمى إبراهيم خليل',
-      studentCode: 'STU-1022',
-      groupName: '2ث كيمياء (ب)',
-      teacherName: 'أ/ حسام فؤاد',
-      academicYear: 'الصف الثاني الثانوي',
-      paymentType: 'رسوم حصة مفردة',
-      amount: 120.0,
-      paymentMethod: 'إنستاباي',
-      assistantName: 'أحمد سعيد',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
-    ),
-    PaymentTransaction(
-      id: 'TXN-9019',
-      studentName: 'عمر خالد المنشاوي',
-      studentCode: 'STU-1088',
-      groupName: '3ث لغة عربية (أ)',
-      teacherName: 'أ/ أحمد كمال',
-      academicYear: 'الصف الثالث الثانوي',
-      paymentType: 'ملزمة النحو الشاملة 2026',
-      amount: 85.0,
-      paymentMethod: 'فودافون كاش',
-      assistantName: 'سارة أحمد',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1, minutes: 10)),
-    ),
-    PaymentTransaction(
-      id: 'TXN-9018',
-      studentName: 'يوسف مصطفى إبراهيم',
-      studentCode: 'STU-1011',
-      groupName: '1ث فيزياء (ج)',
-      teacherName: 'أ/ محمد إبراهيم',
-      academicYear: 'الصف الأول الثانوي',
-      paymentType: 'اشتراك شهر سبتمبر (4 حصص)',
-      amount: 380.0,
-      paymentMethod: 'كاش',
-      assistantName: 'سارة أحمد',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final transactionsAsync = ref.watch(liveTransactionsProvider);
+    final financeOverviewAsync = ref.watch(liveFinanceOverviewProvider);
+
+    final rawList = (transactionsAsync.value?['items'] as List?) ?? [];
+    final transactions = rawList.map((m) => PaymentTransaction.fromMap(m as Map<String, dynamic>)).toList();
 
     final filtered = transactions.where((t) {
       if (selectedFilterMethod != 'الكل' && t.paymentMethod != selectedFilterMethod) {
-        return false;
-      }
-      if (selectedTeacher != 'الكل' && t.teacherName != selectedTeacher) {
         return false;
       }
       if (searchQuery.isNotEmpty) {
@@ -133,99 +126,114 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
             icon: const Icon(LucideIcons.fileSpreadsheet),
             tooltip: 'تصدير ملخص الخزينة',
             onPressed: () {
+              final totalExpenses = ((financeOverviewAsync.value?['todayExpenses'] ?? 0.0) as num).toDouble();
               ExportService.exportFinancialSummary(
                 context: context,
                 centerName: branding.centerName,
                 totalIncome: totalAmount,
-                totalExpenses: 340.0,
-                netProfit: totalAmount - 340.0,
+                totalExpenses: totalExpenses,
+                netProfit: totalAmount - totalExpenses,
                 totalTransactions: filtered.length,
               );
             },
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Filter & Search Header
-          Container(
-            padding: const EdgeInsets.all(14),
-            color: Theme.of(context).cardColor,
-            child: Column(
-              children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'ابحث باسم الطالب، الكود، أو رقم الإيصال...',
-                    prefixIcon: Icon(LucideIcons.search, size: 20),
-                    isDense: true,
-                  ),
-                  onChanged: (val) {
-                    setState(() => searchQuery = val);
-                  },
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('طريقة الدفع: الكل', 'الكل'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('كاش 💵', 'كاش'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('إنستاباي ⚡', 'إنستاباي'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('فودافون كاش 📱', 'فودافون كاش'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Total Summary Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: branding.primaryColor.withOpacity(0.12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'عدد العمليات: ${filtered.length}',
-                  style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      'الإجمالي المحصل: ',
-                      style: GoogleFonts.cairo(fontSize: 13),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          SoundService.lightImpact();
+          ref.invalidate(liveTransactionsProvider);
+          ref.invalidate(liveFinanceOverviewProvider);
+        },
+        child: Column(
+          children: [
+            // Filter & Search Header
+            Container(
+              padding: const EdgeInsets.all(14),
+              color: Theme.of(context).cardColor,
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'ابحث باسم الطالب، الكود، أو رقم الإيصال...',
+                      prefixIcon: Icon(LucideIcons.search, size: 20),
+                      isDense: true,
                     ),
-                    Text(
-                      '${totalAmount.toStringAsFixed(0)} ج.م',
-                      style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: branding.primaryColor,
+                    onChanged: (val) {
+                      setState(() => searchQuery = val);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip('طريقة الدفع: الكل', 'الكل'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('كاش 💵', 'كاش'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('إنستاباي ⚡', 'إنستاباي'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('فودافون كاش 📱', 'فودافون كاش'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Total Summary Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: branding.primaryColor.withOpacity(0.12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'إجمالي المقبوضات (${filtered.length} عملية):',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  Text(
+                    '${totalAmount.toStringAsFixed(0)} ج.م',
+                    style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: branding.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Transactions List
+            Expanded(
+              child: transactionsAsync.when(
+                loading: () => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: CircularProgressIndicator(color: branding.primaryColor),
+                  ),
+                ),
+                error: (err, _) => Center(
+                  child: Text('تعذر تحميل السجل: $err', style: GoogleFonts.cairo(color: Colors.red)),
+                ),
+                data: (_) {
+                  if (filtered.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.receipt, size: 48, color: Colors.grey.withOpacity(0.5)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'لا توجد عمليات مسجلة بالسجل المالي حالياً',
+                            style: GoogleFonts.cairo(color: Colors.grey, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Transactions List
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      'لا توجد عمليات تطابق البحث',
-                      style: GoogleFonts.cairo(color: Colors.grey),
-                    ),
-                  )
-                : ListView.separated(
+                    );
+                  }
+                  return ListView.separated(
                     padding: const EdgeInsets.all(12),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),

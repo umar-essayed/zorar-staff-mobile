@@ -1,7 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 
@@ -16,8 +14,9 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final nameCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
+  final passwordCtrl = TextEditingController(text: '123456');
   String selectedRole = 'مساعد / سكرتارية واستقبال';
+  bool _isSaving = false;
 
   bool canCollectCash = true;
   bool canViewPhones = true;
@@ -27,7 +26,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
   void dispose() {
     nameCtrl.dispose();
     phoneCtrl.dispose();
-    emailCtrl.dispose();
+    passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -65,23 +64,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                 validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال الاسم' : null,
               ),
               const SizedBox(height: 12),
-              Text('الرتبة الوظيفية:', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: selectedRole,
-                isExpanded: true,
-                decoration: const InputDecoration(isDense: true),
-                items: const [
-                  DropdownMenuItem(value: 'مساعد / سكرتارية واستقبال', child: Text('مساعد / سكرتارية واستقبال')),
-                  DropdownMenuItem(value: 'كاشير مالي معتمد', child: Text('كاشير مالي معتمد')),
-                  DropdownMenuItem(value: 'مشرف قاعات وبوابة', child: Text('مشرف قاعات وبوابة')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => selectedRole = val);
-                },
-              ),
-              const SizedBox(height: 12),
-              Text('رقم الهاتف:', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              Text('رقم الهاتف (لتسجيل الدخول):', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextFormField(
                 controller: phoneCtrl,
@@ -93,8 +76,19 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                 ),
                 validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
               ),
+              const SizedBox(height: 12),
+              Text('كلمة المرور المؤقتة:', style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: passwordCtrl,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(LucideIcons.lock, size: 20),
+                  isDense: true,
+                ),
+                validator: (val) => val == null || val.isEmpty ? 'كلمة المرور مطلوبة' : null,
+              ),
               const SizedBox(height: 14),
-              Text('الصلاحيات الممنوعة والمسموحة:',
+              Text('الصلاحيات الممنوحة:',
                   style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               CheckboxListTile(
@@ -128,20 +122,50 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
           child: const Text('إلغاء'),
         ),
         ElevatedButton.icon(
-          icon: const Icon(LucideIcons.check, size: 16),
+          icon: _isSaving
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(LucideIcons.check, size: 16),
           label: const Text('إضافة وتفعيل الحساب'),
-          onPressed: () {
-            if (_formKey.currentState?.validate() ?? false) {
-              SoundService.successFeedback();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF10B981),
-                  content: Text('تم إنشاء حساب الموظف ${nameCtrl.text} بنجاح!'),
-                ),
-              );
-            }
-          },
+          onPressed: _isSaving
+              ? null
+              : () async {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    setState(() => _isSaving = true);
+                    try {
+                      await EduApiService().createStaff({
+                        'name': nameCtrl.text.trim(),
+                        'phone': phoneCtrl.text.trim(),
+                        'password': passwordCtrl.text.trim(),
+                        'role': 'ASSISTANT',
+                        'permissions': {
+                          'canCollectCash': canCollectCash,
+                          'canViewPhones': canViewPhones,
+                          'canOpenEmergency': canOpenEmergency,
+                        },
+                      });
+                      ref.invalidate(liveStaffProvider);
+                      if (context.mounted) {
+                        SoundService.successFeedback();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFF10B981),
+                            content: Text('تم إنشاء حساب الموظف ${nameCtrl.text} بنجاح! ✅'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        SoundService.errorFeedback();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('تعذر إضافة الموظف: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isSaving = false);
+                    }
+                  }
+                },
         ),
       ],
     );
