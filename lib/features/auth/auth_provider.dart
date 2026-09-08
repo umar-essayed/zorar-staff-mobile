@@ -163,7 +163,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(isLoading: false, errorMessage: msg is List ? msg.join(', ') : msg.toString());
         return false;
       }
-    } catch (e: dynamic) {
+    } catch (e) {
       debugPrint('Live API login error: $e');
       String errorMsg = 'بيانات الدخول غير صحيحة أو السيرفر غير متاح';
       if (e is DioException) {
