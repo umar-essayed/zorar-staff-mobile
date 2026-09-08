@@ -6,6 +6,7 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/export_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 
 class PaymentTransaction {
   final String id;
@@ -65,14 +66,17 @@ class PaymentTransaction {
     }
 
     return PaymentTransaction(
-      id: map['receiptNumber']?.toString() ?? map['id']?.toString() ?? 'REC',
+      id: map['receiptNo']?.toString() ??
+          map['receiptNumber']?.toString() ??
+          map['id']?.toString() ??
+          'REC',
       studentName: map['student']?['name']?.toString() ?? 'طالب سنتر',
       studentCode: map['student']?['studentCode']?.toString() ?? '',
       groupName: map['group']?['name']?.toString() ?? 'مجموعة عامة',
       teacherName: map['teacher']?['name']?.toString() ?? 'السنتر',
       academicYear: map['academicYear']?['name']?.toString() ?? '',
       paymentType: typeArabic,
-      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      amount: parseDouble(map['amount']),
       paymentMethod: methodArabic,
       assistantName: map['assistant']?['name']?.toString() ?? 'الاستقبال',
       timestamp: parsedDate,
@@ -126,7 +130,7 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
             icon: const Icon(LucideIcons.fileSpreadsheet),
             tooltip: 'تصدير ملخص الخزينة',
             onPressed: () {
-              final totalExpenses = ((financeOverviewAsync.value?['todayExpenses'] ?? 0.0) as num).toDouble();
+              final totalExpenses = parseDouble(financeOverviewAsync.value?['todayExpenses']);
               ExportService.exportFinancialSummary(
                 context: context,
                 centerName: branding.centerName,
@@ -139,101 +143,124 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          SoundService.lightImpact();
-          ref.invalidate(liveTransactionsProvider);
-          ref.invalidate(liveFinanceOverviewProvider);
-        },
-        child: Column(
-          children: [
-            // Filter & Search Header
-            Container(
-              padding: const EdgeInsets.all(14),
-              color: Theme.of(context).cardColor,
-              child: Column(
-                children: [
-                  TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'ابحث باسم الطالب، الكود، أو رقم الإيصال...',
-                      prefixIcon: Icon(LucideIcons.search, size: 20),
-                      isDense: true,
-                    ),
-                    onChanged: (val) {
-                      setState(() => searchQuery = val);
-                    },
+      body: Column(
+        children: [
+          // Filter & Search Header
+          Container(
+            padding: const EdgeInsets.all(14),
+            color: Theme.of(context).cardColor,
+            child: Column(
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'ابحث باسم الطالب، الكود، أو رقم الإيصال...',
+                    prefixIcon: Icon(LucideIcons.search, size: 20),
+                    isDense: true,
                   ),
-                  const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('طريقة الدفع: الكل', 'الكل'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('كاش 💵', 'كاش'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('إنستاباي ⚡', 'إنستاباي'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('فودافون كاش 📱', 'فودافون كاش'),
-                      ],
-                    ),
+                  onChanged: (val) {
+                    setState(() => searchQuery = val);
+                  },
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('طريقة الدفع: الكل', 'الكل'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('كاش 💵', 'كاش'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('إنستاباي ⚡', 'إنستاباي'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('فودافون كاش 📱', 'فودافون كاش'),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // Total Summary Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: branding.primaryColor.withOpacity(0.12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'إجمالي المقبوضات (${filtered.length} عملية):',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+          // Total Summary Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: branding.primaryColor.withOpacity(0.12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'إجمالي المقبوضات (${filtered.length} عملية):',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                Text(
+                  '${totalAmount.toStringAsFixed(0)} ج.م',
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: branding.primaryColor,
                   ),
-                  Text(
-                    '${totalAmount.toStringAsFixed(0)} ج.م',
-                    style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: branding.primaryColor,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // Transactions List
-            Expanded(
+          // Transactions List
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                SoundService.lightImpact();
+                ref.invalidate(liveTransactionsProvider);
+                ref.invalidate(liveFinanceOverviewProvider);
+              },
               child: transactionsAsync.when(
-                loading: () => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: CircularProgressIndicator(color: branding.primaryColor),
-                  ),
-                ),
-                error: (err, _) => Center(
-                  child: Text('تعذر تحميل السجل: $err', style: GoogleFonts.cairo(color: Colors.red)),
-                ),
-                data: (_) {
-                  if (filtered.isEmpty) {
-                    return Center(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                  children: [
+                    Center(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(LucideIcons.receipt, size: 48, color: Colors.grey.withOpacity(0.5)),
+                          const Icon(LucideIcons.alertCircle, color: Colors.red, size: 40),
                           const SizedBox(height: 8),
-                          Text(
-                            'لا توجد عمليات مسجلة بالسجل المالي حالياً',
-                            style: GoogleFonts.cairo(color: Colors.grey, fontWeight: FontWeight.bold),
+                          Text('تعذر تحميل السجل المالي الحي: $err', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.invalidate(liveTransactionsProvider);
+                              ref.invalidate(liveFinanceOverviewProvider);
+                            },
+                            child: const Text('إعادة المحاولة'),
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                ),
+                data: (_) {
+                  if (filtered.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                      children: [
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(LucideIcons.receipt, size: 48, color: Colors.grey.withOpacity(0.5)),
+                              const SizedBox(height: 8),
+                              Text(
+                                'لا توجد عمليات مسجلة بالسجل المالي حالياً',
+                                style: GoogleFonts.cairo(color: Colors.grey, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   }
                   return ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(12),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -331,8 +358,8 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
                 },
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

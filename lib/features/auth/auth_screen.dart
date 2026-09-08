@@ -365,18 +365,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             // Login Button
             SizedBox(
               width: double.infinity,
-              height: 48,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
                 onPressed: auth.isLoading ? null : _handleLogin,
                 child: auth.isLoading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 22,
+                        height: 22,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : Text(
                         'دخول إلى النظام',
-                        style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.cairo(fontSize: 15.5, fontWeight: FontWeight.bold),
                       ),
               ),
             ),

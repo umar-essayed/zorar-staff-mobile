@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:dio/dio.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
@@ -41,6 +42,8 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
   bool _torchOn = false;
   String? _lastScanFeedback;
   Color? _feedbackColor;
+  String? _lastScannedCode;
+  DateTime? _lastScannedTime;
 
   @override
   void initState() {
@@ -60,10 +63,20 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
 
-    final rawValue = barcodes.first.rawValue;
-    if (rawValue != null && rawValue.trim().isNotEmpty) {
-      _processAttendance(rawValue.trim());
+    final rawValue = barcodes.first.rawValue?.trim();
+    if (rawValue == null || rawValue.isEmpty) return;
+
+    // Fast client-side debounce: ignore repeated scans of identical code within 3 seconds
+    final now = DateTime.now();
+    if (_lastScannedCode == rawValue &&
+        _lastScannedTime != null &&
+        now.difference(_lastScannedTime!).inSeconds < 3) {
+      return;
     }
+
+    _lastScannedCode = rawValue;
+    _lastScannedTime = now;
+    _processAttendance(rawValue);
   }
 
   Future<void> _processAttendance(String code) async {
@@ -90,21 +103,49 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
       final student = res['student'] ?? {};
       final studentName = student['name'] ?? 'طالب مسجل';
       final status = res['status'] ?? 'PRESENT';
-      final msg = res['message'] ?? 'تم تسجيل الحضور بنجاح ✅';
+      final isLate = status == 'LATE';
+      final msg = res['message'] ?? (isLate ? 'تم الحضور متأخراً ⚠️' : 'تم تسجيل الحضور بنجاح ✅');
 
       setState(() {
         _lastScanFeedback = '$studentName • $msg';
-        _feedbackColor = status == 'LATE' ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+        _feedbackColor = isLate ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
       });
 
       // Refresh group attendance list
       ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
     } catch (e) {
-      SoundService.errorFeedback();
-      setState(() {
-        _lastScanFeedback = 'فشل التسجيل: الكود غير صحيح أو الطالب غير مقيد بالمجموعة ❌';
-        _feedbackColor = const Color(0xFFEF4444);
-      });
+      String errMsg = 'فشل التسجيل: تعذر الاتصال بالخادم';
+      bool isWarning = false;
+
+      if (e is DioException) {
+        final resData = e.response?.data;
+        if (resData != null) {
+          final m = resData['message'];
+          if (m != null) {
+            errMsg = m is List ? m.join(', ') : m.toString();
+          }
+        }
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 400 || statusCode == 409 || errMsg.contains('مسبق') || errMsg.contains('بالفعل')) {
+          isWarning = true;
+        }
+      } else {
+        errMsg = e.toString().replaceFirst('Exception: ', '');
+      }
+
+      if (isWarning) {
+        SoundService.lightImpact();
+        setState(() {
+          _lastScanFeedback = '$errMsg ⚠️';
+          _feedbackColor = const Color(0xFFF59E0B);
+        });
+      } else {
+        SoundService.errorFeedback();
+        setState(() {
+          _lastScanFeedback = '$errMsg ❌';
+          _feedbackColor = const Color(0xFFEF4444);
+        });
+      }
     } finally {
       _manualCodeCtrl.clear();
       await Future.delayed(const Duration(milliseconds: 1400));

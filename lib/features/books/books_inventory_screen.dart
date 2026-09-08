@@ -9,6 +9,8 @@ import '../../core/theme/branding_provider.dart';
 import '../cashier/mobile_pos_screen.dart';
 import 'book_form_dialog.dart';
 
+import '../../core/utils/numeric_utils.dart';
+
 class BookInventoryItem {
   final String id;
   final String title;
@@ -34,9 +36,9 @@ class BookInventoryItem {
       title: map['title']?.toString() ?? 'ملزمة دراسية',
       teacher: map['teacher']?['name']?.toString() ?? 'إدارة السنتر',
       grade: map['academicYear']?['name']?.toString() ?? '',
-      price: (map['salePrice'] as num?)?.toDouble() ?? 0.0,
-      stock: (map['stockQuantity'] as num?)?.toInt() ?? 0,
-      sold: (map['_count']?['sales'] as num?)?.toInt() ?? 0,
+      price: parseDouble(map['salePrice']),
+      stock: parseInt(map['stockQuantity']),
+      sold: parseInt(map['_count']?['sales']),
     );
   }
 }

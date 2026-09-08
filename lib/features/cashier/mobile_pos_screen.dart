@@ -7,9 +7,11 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 
 class MobilePosScreen extends ConsumerStatefulWidget {
-  const MobilePosScreen({super.key});
+  final String? initialStudentCode;
+  const MobilePosScreen({super.key, this.initialStudentCode});
 
   @override
   ConsumerState<MobilePosScreen> createState() => _MobilePosScreenState();
@@ -17,21 +19,45 @@ class MobilePosScreen extends ConsumerStatefulWidget {
 
 class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
   Map<String, dynamic>? selectedStudentObj;
-  String selectedItem = 'اشتراك شهر جديد - 450 ج.م';
+  String selectedItem = 'دفع مخصص وملاحظات (مبلغ حر)';
   String paymentMethod = 'كاش';
-  double amount = 450.0;
+  double amount = 350.0;
   double discount = 0.0;
   bool _isProcessing = false;
+  bool _isCustomAmount = true;
+
+  final _customAmountCtrl = TextEditingController(text: '350');
+  final _customNotesCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _customAmountCtrl.dispose();
+    _customNotesCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
     final studentsAsync = ref.watch(liveStudentsProvider);
+    final booksAsync = ref.watch(liveBooksProvider);
     final netTotal = (amount - discount).clamp(0.0, 999999.0);
 
     final studentsList = studentsAsync.value ?? [];
     if (selectedStudentObj == null && studentsList.isNotEmpty) {
-      selectedStudentObj = studentsList.first;
+      if (widget.initialStudentCode != null && widget.initialStudentCode!.isNotEmpty) {
+        selectedStudentObj = studentsList.firstWhere(
+          (s) => (s['studentCode'] ?? s['code']) == widget.initialStudentCode,
+          orElse: () => studentsList.first,
+        );
+      } else {
+        selectedStudentObj = studentsList.first;
+      }
     }
 
     final studentName = selectedStudentObj?['name']?.toString() ?? 'اختر طالباً';
@@ -113,39 +139,148 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
               style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: selectedItem,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(LucideIcons.tag, size: 20),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'اشتراك شهر سبتمبر (4 حصص) - 450 ج.م',
-                  child: Text('اشتراك شهر سبتمبر (4 حصص) - 450 ج.م'),
-                ),
-                DropdownMenuItem(
-                  value: 'رسوم حصة مفردة / تجريبية - 120 ج.م',
-                  child: Text('رسوم حصة مفردة / تجريبية - 120 ج.م'),
-                ),
-                DropdownMenuItem(
-                  value: 'ملزمة النحو والتدريبات 2026 - 85 ج.م',
-                  child: Text('ملزمة النحو والتدريبات 2026 - 85 ج.م'),
-                ),
-                DropdownMenuItem(
-                  value: 'كتاب الشرح وبنك الأسئلة - 150 ج.م',
-                  child: Text('كتاب الشرح وبنك الأسئلة - 150 ج.م'),
-                ),
-              ],
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() {
-                    selectedItem = val;
-                    if (val.contains('450')) amount = 450.0;
-                    if (val.contains('120')) amount = 120.0;
-                    if (val.contains('85')) amount = 85.0;
-                    if (val.contains('150')) amount = 150.0;
+
+            Builder(
+              builder: (context) {
+                // Build dynamic charge items
+                final List<Map<String, dynamic>> chargeOptions = [];
+
+                // 1. Unpaid Monthly Subscriptions
+                final monthlySubs = (selectedStudentObj?['monthlySubs'] as List?) ?? [];
+                for (final sub in monthlySubs) {
+                  if (sub is Map && sub['isPaid'] == false) {
+                    final mName = sub['monthName']?.toString() ?? 'اشتراك شهر';
+                    final mAmount = parseDouble(sub['amount'], 350.0);
+                    chargeOptions.add({
+                      'label': 'سداد $mName (${mAmount.toInt()} ج.م)',
+                      'amount': mAmount,
+                      'type': 'MONTHLY_SUBSCRIPTION',
+                      'isCustom': false,
+                    });
+                  }
+                }
+
+                // 2. Group Session Fees
+                if (groupsList != null && groupsList.isNotEmpty) {
+                  for (final g in groupsList) {
+                    if (g is Map && g['group'] is Map) {
+                      final gMap = g['group'] as Map;
+                      final gName = gMap['name']?.toString() ?? 'المجموعة';
+                      final sPrice = parseDouble(gMap['pricePerSession'], 50.0);
+                      final mFee = parseDouble(gMap['monthlyFee'], 350.0);
+                      chargeOptions.add({
+                        'label': 'رسوم حصة مفردة [$gName] (${sPrice.toInt()} ج.م)',
+                        'amount': sPrice,
+                        'type': 'LESSON_SESSION_FEE',
+                        'isCustom': false,
+                      });
+                      if (monthlySubs.isEmpty) {
+                        chargeOptions.add({
+                          'label': 'اشتراك شهر جديد [$gName] (${mFee.toInt()} ج.م)',
+                          'amount': mFee,
+                          'type': 'MONTHLY_SUBSCRIPTION',
+                          'isCustom': false,
+                        });
+                      }
+                    }
+                  }
+                }
+
+                // 3. Available Books
+                final booksList = booksAsync.value ?? [];
+                for (final b in booksList) {
+                  final bTitle = b['title']?.toString() ?? 'كتاب';
+                  final bPrice = parseDouble(b['salePrice'], 85.0);
+                  chargeOptions.add({
+                    'label': 'شراء ملزمة: $bTitle (${bPrice.toInt()} ج.م)',
+                    'amount': bPrice,
+                    'type': 'BOOK_NOTE_PURCHASE',
+                    'isCustom': false,
                   });
                 }
+
+                // 4. Custom Payment (Always available)
+                chargeOptions.add({
+                  'label': 'دفع مخصص وملاحظات (مبلغ حر)',
+                  'amount': parseDouble(_customAmountCtrl.text, 100.0),
+                  'type': 'OTHER_INCOME',
+                  'isCustom': true,
+                });
+
+                // Ensure selectedItem is present in items list
+                final validLabels = chargeOptions.map((c) => c['label'] as String).toList();
+                if (!validLabels.contains(selectedItem)) {
+                  selectedItem = validLabels.first;
+                  final firstOpt = chargeOptions.first;
+                  amount = parseDouble(firstOpt['amount']);
+                  _isCustomAmount = firstOpt['isCustom'] as bool;
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedItem,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(LucideIcons.tag, size: 20),
+                      ),
+                      items: chargeOptions.map((opt) {
+                        return DropdownMenuItem<String>(
+                          value: opt['label'] as String,
+                          child: Text(
+                            opt['label'] as String,
+                            style: GoogleFonts.cairo(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            selectedItem = val;
+                            final match = chargeOptions.firstWhere((c) => c['label'] == val, orElse: () => chargeOptions.last);
+                            _isCustomAmount = match['isCustom'] as bool;
+                            if (!_isCustomAmount) {
+                              amount = parseDouble(match['amount']);
+                              _customAmountCtrl.text = amount.toInt().toString();
+                            } else {
+                              amount = parseDouble(_customAmountCtrl.text, 100.0);
+                            }
+                          });
+                        }
+                      },
+                    ),
+
+                    if (_isCustomAmount) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _customAmountCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'المبلغ المطلوب تحصيله بالجنيه (ج.م)',
+                          prefixIcon: Icon(LucideIcons.coins, size: 18),
+                          isDense: true,
+                        ),
+                        onChanged: (val) {
+                          setState(() {
+                            amount = parseDouble(val);
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _customNotesCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'ملاحظات وبيان الدفع بالخزينة (مطلوب)',
+                          hintText: 'مثال: سداد متبقي، رسوم إضافية، ملزمة مراجعة...',
+                          prefixIcon: Icon(LucideIcons.fileText, size: 18),
+                          isDense: true,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
               },
             ),
 
@@ -221,13 +356,16 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
             // Action Buttons
             SizedBox(
               width: double.infinity,
-              height: 52,
               child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
                 icon: _isProcessing
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Icon(LucideIcons.printer, size: 20),
                 label: Text(
-                  _isProcessing ? 'جاري تسجيل الحركة بالخزينة...' : 'تأكيد الدفع والطباعة',
+                  _isProcessing ? 'جاري تسجيل الحركة بالخزينة...' : 'تأكيد الدفع وطباعة الإيصال',
                   style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 onPressed: _isProcessing
@@ -239,24 +377,63 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                           );
                           return;
                         }
+
+                        if (netTotal <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('يرجى تحديد مبلغ صحيح أكبر من الصفر')),
+                          );
+                          return;
+                        }
+
                         setState(() => _isProcessing = true);
                         try {
                           String methodBackend = 'CASH';
                           if (paymentMethod == 'فودافون كاش') methodBackend = 'VODAFONE_CASH';
                           if (paymentMethod == 'إنستاباي') methodBackend = 'INSTAPAY';
 
-                          final res = await EduApiService().createTransaction({
+                          String typeBackend = 'OTHER_INCOME';
+                          if (selectedItem.contains('اشتراك شهر') || selectedItem.contains('سداد')) {
+                            typeBackend = 'MONTHLY_SUBSCRIPTION';
+                          } else if (selectedItem.contains('حصة')) {
+                            typeBackend = 'LESSON_SESSION_FEE';
+                          } else if (selectedItem.contains('ملزمة') || selectedItem.contains('كتاب')) {
+                            typeBackend = 'BOOK_NOTE_PURCHASE';
+                          }
+
+                          String noteText = selectedItem;
+                          if (_isCustomAmount && _customNotesCtrl.text.trim().isNotEmpty) {
+                            noteText = _customNotesCtrl.text.trim();
+                          }
+
+                          final payload = <String, dynamic>{
                             'studentCode': studentCode,
                             'amount': netTotal,
                             'method': methodBackend,
-                            'type': selectedItem.contains('شهر') ? 'MONTHLY_SUBSCRIPTION' : selectedItem.contains('حصة') ? 'SINGLE_SESSION' : 'BOOK_PURCHASE',
-                            'notes': selectedItem,
-                          });
+                            'type': typeBackend,
+                            'description': noteText,
+                          };
+
+                          if (groupsList != null && groupsList.isNotEmpty) {
+                            final g0 = groupsList[0];
+                            if (g0 is Map) {
+                              payload['groupId'] = g0['groupId'] ?? g0['group']?['id'];
+                              payload['teacherId'] = g0['group']?['teacherId'];
+                              payload['subjectId'] = g0['group']?['subjectId'];
+                            }
+                          }
+                          if (selectedStudentObj?['academicYearId'] != null) {
+                            payload['academicYearId'] = selectedStudentObj!['academicYearId'];
+                          }
+
+                          final res = await EduApiService().createTransaction(payload);
 
                           ref.invalidate(liveTransactionsProvider);
                           ref.invalidate(liveFinanceOverviewProvider);
+                          ref.invalidate(liveStudentsProvider);
 
-                          final recNo = res?['receiptNumber']?.toString() ?? 'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                          final recNo = res?['receiptNo']?.toString() ??
+                              res?['receiptNumber']?.toString() ??
+                              'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
                           SoundService.successFeedback();
                           if (context.mounted) {
                             _showReceiptDialog(
@@ -271,8 +448,13 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                         } catch (e) {
                           SoundService.errorFeedback();
                           if (context.mounted) {
+                            String err = 'تعذر تسجيل عملية الدفع: $e';
+                            if (e is DioException && e.response?.data?['message'] != null) {
+                              final m = e.response!.data['message'];
+                              err = m is List ? m.join(', ') : m.toString();
+                            }
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('تعذر تسجيل عملية الدفع: $e'), backgroundColor: Colors.red),
+                              SnackBar(content: Text(err), backgroundColor: Colors.red),
                             );
                           }
                         } finally {

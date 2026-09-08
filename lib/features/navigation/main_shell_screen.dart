@@ -174,13 +174,27 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                'assets/images/zorar_icon.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Icon(LucideIcons.sparkles, color: branding.primaryColor, size: 20),
-              ),
+              child: (branding.logoUrl != null && branding.logoUrl!.isNotEmpty)
+                  ? Image.network(
+                      branding.logoUrl!,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Image.asset(
+                        'assets/images/zorar_icon.png',
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(LucideIcons.sparkles, color: branding.primaryColor, size: 20),
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/zorar_icon.png',
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(LucideIcons.sparkles, color: branding.primaryColor, size: 20),
+                    ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -275,13 +289,26 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.asset(
-                        'assets/images/zorar_icon.png',
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(LucideIcons.sparkles, color: Colors.white),
-                      ),
+                      child: (branding.logoUrl != null && branding.logoUrl!.isNotEmpty)
+                          ? Image.network(
+                              branding.logoUrl!,
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Image.asset(
+                                'assets/images/zorar_icon.png',
+                                width: 44,
+                                height: 44,
+                                errorBuilder: (_, __, ___) => const Icon(LucideIcons.sparkles, color: Colors.white),
+                              ),
+                            )
+                          : Image.asset(
+                              'assets/images/zorar_icon.png',
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(LucideIcons.sparkles, color: Colors.white),
+                            ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(

@@ -13,6 +13,11 @@ class BrandingNotifier extends StateNotifier<BrandingModel> {
     state = loaded;
   }
 
+  Future<void> updateFromTenant(Map<String, dynamic> tenant) async {
+    state = BrandingModel.fromTenant(tenant, current: state);
+    await BrandingService.saveBranding(state);
+  }
+
   Future<void> updateCenterName(String name) async {
     state = state.copyWith(centerName: name);
     await BrandingService.saveBranding(state);

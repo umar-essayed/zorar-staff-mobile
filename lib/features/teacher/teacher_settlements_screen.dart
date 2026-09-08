@@ -6,6 +6,7 @@ import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 
 class TeacherSettlementsScreen extends ConsumerStatefulWidget {
   const TeacherSettlementsScreen({super.key});
@@ -345,7 +346,7 @@ class _TeacherSettlementsScreenState extends ConsumerState<TeacherSettlementsScr
                             int totalStudents = 0;
                             for (final g in groups) {
                               if (g is Map && g['_count'] is Map) {
-                                totalStudents += (g['_count']['students'] as num? ?? 0).toInt();
+                                totalStudents += parseInt(g['_count']['students']);
                               }
                             }
 

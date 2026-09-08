@@ -299,19 +299,25 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(LucideIcons.messageCircle, size: 16, color: Color(0xFF10B981)),
-                    label: const Text('واتساب ولي الأمر'),
-                    onPressed: () {
-                      WhatsAppService.sendCustomMessage(
-                        context,
-                        phone: guardianPhone,
-                        message: 'مرحباً بخصوص طلب التقديم للطالب $name في السنتر.',
-                      );
-                    },
+                    icon: const Icon(LucideIcons.eye, size: 16),
+                    label: const Text('عرض تفاصيل الطلب'),
+                    onPressed: () => _showAdmissionDetailsSheet(context, item, branding),
                   ),
                 ),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  icon: const Icon(LucideIcons.messageCircle, size: 18, color: Color(0xFF10B981)),
+                  tooltip: 'واتساب ولي الأمر',
+                  onPressed: () {
+                    WhatsAppService.sendCustomMessage(
+                      context,
+                      phone: guardianPhone,
+                      message: 'مرحباً بخصوص طلب التقديم للطالب $name في السنتر.',
+                    );
+                  },
+                ),
                 if (status == 'PENDING') ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   IconButton.filled(
                     style: IconButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
                     icon: const Icon(LucideIcons.check, size: 18),
@@ -331,6 +337,142 @@ class _AdmissionsScreenState extends ConsumerState<AdmissionsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAdmissionDetailsSheet(BuildContext context, Map<String, dynamic> item, dynamic branding) {
+    final name = item['studentName'] ?? item['name'] ?? 'بدون اسم';
+    final phone = item['phone'] ?? 'غير محدد';
+    final guardianPhone = item['guardianPhone'] ?? phone;
+    final status = item['status'] ?? 'PENDING';
+    final dateStr = item['createdAt'] != null
+        ? item['createdAt'].toString().split('T').first
+        : 'اليوم';
+    final nationalId = item['nationalId']?.toString() ?? 'غير مسجل';
+    final notes = item['notes']?.toString() ?? 'لا توجد ملاحظات إضافية';
+    final stageName = item['academicYear']?['name']?.toString() ?? 'المرحلة العامة';
+
+    Color statusColor = const Color(0xFFF59E0B);
+    String statusTitle = 'قيد المراجعة';
+    if (status == 'APPROVED') {
+      statusColor = const Color(0xFF10B981);
+      statusTitle = 'تم القبول والتسكين';
+    } else if (status == 'REJECTED') {
+      statusColor = const Color(0xFFEF4444);
+      statusTitle = 'مرفوض';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'بيانات طلب التقديم الإلكتروني',
+                      style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      statusTitle,
+                      style: GoogleFonts.cairo(fontSize: 11.5, fontWeight: FontWeight.bold, color: statusColor),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              _buildDetailRow('اسم الطالب:', name, LucideIcons.user),
+              const SizedBox(height: 10),
+              _buildDetailRow('هاتف الطالب:', phone, LucideIcons.phone),
+              const SizedBox(height: 10),
+              _buildDetailRow('هاتف ولي الأمر:', guardianPhone, LucideIcons.phoneCall),
+              const SizedBox(height: 10),
+              _buildDetailRow('الرقم القومي:', nationalId, LucideIcons.creditCard),
+              const SizedBox(height: 10),
+              _buildDetailRow('المرحلة / السنة:', stageName, LucideIcons.graduationCap),
+              const SizedBox(height: 10),
+              _buildDetailRow('تاريخ تقديم الطلب:', dateStr, LucideIcons.calendar),
+              const SizedBox(height: 10),
+              _buildDetailRow('الملاحظات:', notes, LucideIcons.fileText),
+
+              const SizedBox(height: 24),
+
+              if (status == 'PENDING')
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(LucideIcons.check, size: 18),
+                        label: const Text('قبول وتسكين الطالب'),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _handleApprove(item);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(LucideIcons.x, size: 18),
+                        label: const Text('رفض الطلب'),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _handleReject(item);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 8),
+        Text(label, style: GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700], fontWeight: FontWeight.w600)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
     );
   }
 }

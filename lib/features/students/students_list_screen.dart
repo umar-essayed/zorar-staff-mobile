@@ -7,6 +7,8 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
+import '../cashier/mobile_pos_screen.dart';
 import 'student_detail_screen.dart';
 import 'student_form_dialog.dart';
 
@@ -123,38 +125,43 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                   // Filter by status if applied
                   final filtered = students.where((s) {
                     if (_statusFilter == 'ALL') return true;
-                    // Mock / status check
-                    final balance = (s['walletBalance'] as num?)?.toDouble() ?? 0;
+                    final balance = parseDouble(s['walletBalance']);
                     if (_statusFilter == 'LATE' && balance < 0) return true;
                     if (_statusFilter == 'PAID' && balance >= 0) return true;
                     return true;
                   }).toList();
 
                   if (filtered.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LucideIcons.users, size: 54, color: Colors.grey.withOpacity(0.4)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'لا يوجد طلاب مطابقين للبحث',
-                            style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey),
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                      children: [
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(LucideIcons.users, size: 54, color: Colors.grey.withOpacity(0.4)),
+                              const SizedBox(height: 12),
+                              Text(
+                                'لا يوجد طلاب مطابقين للبحث',
+                                style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(backgroundColor: branding.primaryColor),
+                                icon: const Icon(LucideIcons.userPlus, size: 16),
+                                label: const Text('تسجيل أول طالب الآن'),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => const StudentFormDialog(),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(backgroundColor: branding.primaryColor),
-                            icon: const Icon(LucideIcons.userPlus, size: 16),
-                            label: const Text('تسجيل أول طالب الآن'),
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => const StudentFormDialog(),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   }
 
@@ -163,6 +170,7 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                   }
 
                   return ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(14),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -173,20 +181,26 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(LucideIcons.alertCircle, color: Colors.red, size: 40),
-                      const SizedBox(height: 8),
-                      Text('تعذر تحميل بيانات الطلاب من السيرفر', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () => ref.invalidate(liveStudentsProvider),
-                        child: const Text('إعادة المحاولة'),
+                error: (e, _) => ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                  children: [
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(LucideIcons.alertCircle, color: Colors.red, size: 40),
+                          const SizedBox(height: 8),
+                          Text('تعذر تحميل بيانات الطلاب من السيرفر', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () => ref.invalidate(liveStudentsProvider),
+                            child: const Text('إعادة المحاولة'),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -218,7 +232,7 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
     final phone = student['phone'] ?? '';
     final guardianPhone = student['guardianPhone'] ?? phone;
     final yearName = student['academicYear']?['name'] ?? 'غير محدد';
-    final balance = (student['walletBalance'] as num?)?.toDouble() ?? 0.0;
+    final balance = parseDouble(student['walletBalance']);
 
     return Card(
       elevation: 0,
@@ -228,17 +242,7 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (ctx) => StudentDetailScreen(
-                studentCode: code,
-                studentName: name,
-              ),
-            ),
-          );
-        },
+        onTap: () => _showStudentActionsModal(context, student, branding),
         child: Padding(
           padding: const EdgeInsets.all(14.0),
           child: Column(
@@ -248,11 +252,15 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CircleAvatar(
+                    radius: 20,
                     backgroundColor: branding.primaryColor.withOpacity(0.12),
-                    foregroundColor: branding.primaryColor,
                     child: Text(
                       name.isNotEmpty ? name[0] : 'ط',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                      style: GoogleFonts.cairo(
+                        color: branding.primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -262,7 +270,10 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                       children: [
                         Text(
                           name,
-                          style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.cairo(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Row(
@@ -274,14 +285,18 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                code,
-                                style: GoogleFonts.cairo(fontSize: 10.5, fontWeight: FontWeight.w600),
+                                'كود: $code',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[800],
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               yearName,
-                              style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                              style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -289,15 +304,8 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(LucideIcons.messageCircle, color: Color(0xFF10B981), size: 22),
-                    tooltip: 'واتساب ولي الأمر',
-                    onPressed: () {
-                      WhatsAppService.sendCustomMessage(
-                        context,
-                        phone: guardianPhone,
-                        message: 'مرحباً ولي أمر الطالب $name، نتواصل معكم من إدارة السنتر.',
-                      );
-                    },
+                    icon: const Icon(LucideIcons.moreVertical, size: 20),
+                    onPressed: () => _showStudentActionsModal(context, student, branding),
                   ),
                 ],
               ),
@@ -311,23 +319,43 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
                     children: [
                       Icon(LucideIcons.phone, size: 14, color: Colors.grey[600]),
                       const SizedBox(width: 6),
-                      Text(phone, style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700])),
+                      Text(phone.isNotEmpty ? phone : guardianPhone, style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700])),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: balance >= 0 ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFFEF4444).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      balance >= 0 ? 'مسدد بالكامل' : 'متبقي ${balance.abs()} ج.م',
-                      style: GoogleFonts.cairo(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: balance >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: balance >= 0 ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFFEF4444).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          balance >= 0 ? 'مسدد بالكامل' : 'متبقي ${balance.abs()} ج.م',
+                          style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: balance >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(LucideIcons.messageCircle, size: 18, color: Color(0xFF10B981)),
+                        tooltip: 'واتساب ولي الأمر',
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          if (guardianPhone.isNotEmpty) {
+                            WhatsAppService.sendCustomMessage(
+                              context,
+                              phone: guardianPhone,
+                              message: 'السلام عليكم، رسالة من ${branding.centerName} بخصوص الطالب $name.',
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -339,61 +367,232 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
   }
 
   Widget _buildHorizontalScrollViewTable(List<Map<String, dynamic>> students, dynamic branding) {
-    // Solves the overflow completely using nested Horizontal ScrollView
     return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(12),
       child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: DataTable(
-          headingRowColor: MaterialStateProperty.all(branding.primaryColor.withOpacity(0.08)),
-          columns: const [
-            DataColumn(label: Text('كود الطالب')),
-            DataColumn(label: Text('اسم الطالب')),
-            DataColumn(label: Text('السنة الدراسية')),
-            DataColumn(label: Text('رقم ولي الأمر')),
-            DataColumn(label: Text('الحالة المالية')),
-            DataColumn(label: Text('إجراءات')),
-          ],
-          rows: students.map((s) {
-            final name = s['name'] ?? '';
-            final code = s['studentCode'] ?? s['code'] ?? '';
-            final year = s['academicYear']?['name'] ?? '-';
-            final guardian = s['guardianPhone'] ?? s['phone'] ?? '';
-            final balance = (s['walletBalance'] as num?)?.toDouble() ?? 0.0;
+        scrollDirection: Axis.horizontal,
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+          ),
+          child: DataTable(
+            headingRowColor: MaterialStateProperty.all(branding.primaryColor.withOpacity(0.08)),
+            columns: const [
+              DataColumn(label: Text('كود الطالب')),
+              DataColumn(label: Text('اسم الطالب')),
+              DataColumn(label: Text('السنة الدراسية')),
+              DataColumn(label: Text('رقم ولي الأمر')),
+              DataColumn(label: Text('الحالة المالية')),
+              DataColumn(label: Text('إجراءات')),
+            ],
+            rows: students.map((s) {
+              final name = s['name'] ?? '';
+              final code = s['studentCode'] ?? s['code'] ?? '';
+              final year = s['academicYear']?['name'] ?? '-';
+              final guardian = s['guardianPhone'] ?? s['phone'] ?? '';
+              final balance = parseDouble(s['walletBalance']);
 
-            return DataRow(
-              cells: [
-                DataCell(Text(code, style: const TextStyle(fontWeight: FontWeight.bold))),
-                DataCell(Text(name)),
-                DataCell(Text(year)),
-                DataCell(Text(guardian)),
-                DataCell(
-                  Text(
-                    balance >= 0 ? 'مسدد' : 'متأخر',
-                    style: TextStyle(
-                      color: balance >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                      fontWeight: FontWeight.bold,
+              return DataRow(
+                cells: [
+                  DataCell(Text(code, style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Text(name)),
+                  DataCell(Text(year)),
+                  DataCell(Text(guardian)),
+                  DataCell(
+                    Text(
+                      balance >= 0 ? 'مسدد' : 'متأخر',
+                      style: TextStyle(
+                        color: balance >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                DataCell(
-                  IconButton(
-                    icon: const Icon(LucideIcons.eye, size: 18),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (ctx) => StudentDetailScreen(studentCode: code, studentName: name),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(LucideIcons.eye, size: 18),
+                          tooltip: 'عرض الملف الكامل',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (ctx) => StudentDetailScreen(studentCode: code, studentName: name),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                        IconButton(
+                          icon: const Icon(LucideIcons.wallet, size: 18),
+                          tooltip: 'تحصيل بالخزينة',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (ctx) => MobilePosScreen(initialStudentCode: code),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          }).toList(),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ),
+    );
+  }
+
+  void _showStudentActionsModal(BuildContext context, Map<String, dynamic> student, dynamic branding) {
+    final name = student['name'] ?? 'طالب';
+    final code = student['studentCode'] ?? student['code'] ?? '';
+    final phone = student['phone'] ?? '';
+    final guardianPhone = student['guardianPhone'] ?? phone;
+    final yearName = student['academicYear']?['name'] ?? 'غير محدد';
+    final balance = parseDouble(student['walletBalance']);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: branding.primaryColor.withOpacity(0.12),
+                    child: Text(
+                      name.isNotEmpty ? name[0] : 'ط',
+                      style: GoogleFonts.cairo(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: branding.primaryColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text('كود: $code • $yearName', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: balance >= 0 ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFFEF4444).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      balance >= 0 ? 'مسدد' : 'متبقي ${balance.abs()} ج.م',
+                      style: GoogleFonts.cairo(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: balance >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+
+              // Action 1: View Full Profile
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: branding.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(LucideIcons.user, color: branding.primaryColor, size: 20),
+                ),
+                title: Text('عرض الملف الأكاديمي والمالي الشامل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                subtitle: Text('بيانات الكارت الذكي QR، سجل الحضور، واشتراكات الشهور', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                trailing: const Icon(LucideIcons.chevronLeft, size: 18),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (c) => StudentDetailScreen(studentCode: code, studentName: name),
+                    ),
+                  );
+                },
+              ),
+
+              // Action 2: Collect Money via POS
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(LucideIcons.receipt, color: Color(0xFF10B981), size: 20),
+                ),
+                title: Text('تحصيل اشتراك أو رسوم (نقطة البيع POS)', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                subtitle: Text('فتح شاشة الكاشير لسداد المصروفات وطباعة الإيصال', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                trailing: const Icon(LucideIcons.chevronLeft, size: 18),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (c) => MobilePosScreen(initialStudentCode: code),
+                    ),
+                  );
+                },
+              ),
+
+              // Action 3: WhatsApp Guardian
+              if (guardianPhone.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(LucideIcons.messageCircle, color: Color(0xFF25D366), size: 20),
+                  ),
+                  title: Text('مراسلة ولي الأمر عبر واتساب', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                  subtitle: Text(guardianPhone, style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                  trailing: const Icon(LucideIcons.chevronLeft, size: 18),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    WhatsAppService.sendCustomMessage(
+                      context,
+                      phone: guardianPhone,
+                      message: 'السلام عليكم، رسالة من إدارة ${branding.centerName} بخصوص الطالب $name.',
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

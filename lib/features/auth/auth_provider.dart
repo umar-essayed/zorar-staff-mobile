@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
+import '../../core/theme/branding_provider.dart';
 
 class UserModel {
   final String id;
@@ -14,6 +15,7 @@ class UserModel {
   final String phone;
   final String? teacherId;
   final String? tenantId;
+  final Map<String, dynamic>? tenant;
 
   const UserModel({
     required this.id,
@@ -23,24 +25,40 @@ class UserModel {
     required this.phone,
     this.teacherId,
     this.tenantId,
+    this.tenant,
   });
 
-  bool get isAdmin => role == AppConstants.roleOwner || role == AppConstants.roleAdmin;
-  bool get isAssistant => role == AppConstants.roleAssistant;
-  bool get isTeacher => role == AppConstants.roleTeacher;
+  bool get isAdmin =>
+      role == 'OWNER' ||
+      role == 'ADMIN' ||
+      role == 'TENANT_ADMIN' ||
+      role == 'SUPER_ADMIN' ||
+      role == AppConstants.roleOwner ||
+      role == AppConstants.roleAdmin;
+
+  bool get isAssistant =>
+      role == 'ASSISTANT' || role == 'STAFF' || role == AppConstants.roleAssistant;
+
+  bool get isTeacher =>
+      role == 'TEACHER' || role == AppConstants.roleTeacher;
 
   String get roleArabicTitle {
-    switch (role) {
-      case AppConstants.roleOwner:
+    switch (role.toUpperCase()) {
+      case 'OWNER':
         return 'مالك السنتر';
-      case AppConstants.roleAdmin:
+      case 'TENANT_ADMIN':
+        return 'المدير العام';
+      case 'ADMIN':
         return 'مدير النظام';
-      case AppConstants.roleAssistant:
-        return 'مساعد واستقبال';
-      case AppConstants.roleTeacher:
-        return 'معلم / مدرس';
+      case 'SUPER_ADMIN':
+        return 'المدير الأعلى';
+      case 'ASSISTANT':
+      case 'STAFF':
+        return 'مساعد إداري واستقبال';
+      case 'TEACHER':
+        return 'المحاضر / المعلم';
       default:
-        return role;
+        return 'عضو الفريق';
     }
   }
 
@@ -52,16 +70,18 @@ class UserModel {
         'phone': phone,
         'teacherId': teacherId,
         'tenantId': tenantId,
+        'tenant': tenant,
       };
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
         id: json['id'] as String? ?? '',
         name: json['name'] as String? ?? 'مستخدم زُرار',
-        role: json['role'] as String? ?? AppConstants.roleAdmin,
+        role: json['role'] as String? ?? 'TENANT_ADMIN',
         email: json['email'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
         teacherId: json['teacherId'] as String?,
         tenantId: json['tenantId'] as String?,
+        tenant: json['tenant'] as Map<String, dynamic>?,
       );
 }
 
@@ -94,7 +114,9 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState()) {
+  final Ref? ref;
+
+  AuthNotifier([this.ref]) : super(const AuthState()) {
     _loadStoredSession();
   }
 
@@ -106,9 +128,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (token != null && rawUser != null && !token.startsWith('demo-')) {
         final userMap = jsonDecode(rawUser) as Map<String, dynamic>;
+        final user = UserModel.fromJson(userMap);
+        if (user.tenant != null && ref != null) {
+          ref!.read(brandingProvider.notifier).updateFromTenant(user.tenant!);
+        }
         state = state.copyWith(
           isAuthenticated: true,
-          user: UserModel.fromJson(userMap),
+          user: user,
         );
         return;
       }
@@ -150,6 +176,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
           await prefs.setString(AppConstants.keyAuthToken, token.toString());
         }
         await prefs.setString(AppConstants.keyUserData, jsonEncode(user.toJson()));
+
+        if (user.tenant != null && ref != null) {
+          await ref!.read(brandingProvider.notifier).updateFromTenant(user.tenant!);
+        }
 
         state = state.copyWith(
           isLoading: false,
@@ -285,5 +315,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });

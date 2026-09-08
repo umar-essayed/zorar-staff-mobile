@@ -6,6 +6,7 @@ import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 
 class ShiftClosingDialog extends ConsumerStatefulWidget {
   const ShiftClosingDialog({super.key});
@@ -28,7 +29,7 @@ class _ShiftClosingDialogState extends ConsumerState<ShiftClosingDialog> {
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
     final overview = ref.watch(liveFinanceOverviewProvider).value;
-    final expectedSystemCash = ((overview?['todayIncome'] ?? 0.0) as num).toDouble();
+    final expectedSystemCash = parseDouble(overview?['todayIncome']);
     final counted = double.tryParse(countedCashCtrl.text) ?? expectedSystemCash;
     final difference = counted - expectedSystemCash;
 

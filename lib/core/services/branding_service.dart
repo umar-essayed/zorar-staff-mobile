@@ -69,6 +69,32 @@ class BrandingModel {
     };
   }
 
+  static Color parseHexColor(String? hexString, Color defaultColor) {
+    if (hexString == null || hexString.isEmpty) return defaultColor;
+    String hex = hexString.replaceAll('#', '').trim();
+    if (hex.length == 6) hex = 'FF$hex';
+    final val = int.tryParse(hex, radix: 16);
+    return val != null ? Color(val) : defaultColor;
+  }
+
+  factory BrandingModel.fromTenant(Map<String, dynamic> tenant, {BrandingModel? current}) {
+    final cur = current ?? BrandingModel.defaultBranding();
+    final name = tenant['name']?.toString();
+    final subdomain = tenant['subdomain']?.toString();
+    final brandingConfig = tenant['brandingConfig'] as Map<String, dynamic>? ?? {};
+    final logoUrl = brandingConfig['logoUrl']?.toString() ?? tenant['logoUrl']?.toString();
+    final primaryColor = parseHexColor(brandingConfig['primaryColor']?.toString(), cur.primaryColor);
+    final secondaryColor = parseHexColor(brandingConfig['secondaryColor']?.toString(), cur.secondaryColor);
+
+    return cur.copyWith(
+      centerName: (name != null && name.isNotEmpty) ? name : cur.centerName,
+      subdomain: (subdomain != null && subdomain.isNotEmpty) ? subdomain : cur.subdomain,
+      primaryColor: primaryColor,
+      secondaryColor: secondaryColor,
+      logoUrl: (logoUrl != null && logoUrl.isNotEmpty) ? logoUrl : cur.logoUrl,
+    );
+  }
+
   factory BrandingModel.fromJson(Map<String, dynamic> json) {
     return BrandingModel(
       centerName: json['centerName'] as String? ?? AppConstants.defaultCenterName,
@@ -91,11 +117,25 @@ class BrandingService {
   static Future<BrandingModel> loadBranding() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      BrandingModel model = BrandingModel.defaultBranding();
+
       final raw = prefs.getString(AppConstants.keyBranding);
       if (raw != null) {
         final map = jsonDecode(raw) as Map<String, dynamic>;
-        return BrandingModel.fromJson(map);
+        model = BrandingModel.fromJson(map);
       }
+
+      // Check if user session has tenant branding that should be synced
+      final rawUser = prefs.getString(AppConstants.keyUserData);
+      if (rawUser != null) {
+        final userMap = jsonDecode(rawUser) as Map<String, dynamic>;
+        final tenant = userMap['tenant'] as Map<String, dynamic>?;
+        if (tenant != null) {
+          model = BrandingModel.fromTenant(tenant, current: model);
+        }
+      }
+
+      return model;
     } catch (e) {
       debugPrint('Error reading branding: $e');
     }
