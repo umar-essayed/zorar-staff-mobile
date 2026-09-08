@@ -66,34 +66,24 @@ class UploadService {
     String folder = 'materials',
   }) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: allowedExtensions,
-        withData: true,
       );
 
-      if (result == null || result.files.isEmpty) return null;
+      if (file == null) return null;
 
-      final file = result.files.first;
       final fileName = file.name;
-      final fileSize = file.size;
+      final fileSize = file.lengthSync() ?? (await file.length());
 
       SoundService.lightImpact();
 
-      String? url;
-      if (file.bytes != null) {
-        url = await EduApiService().uploadImageFile(
-          file.bytes!,
-          folder: folder,
-          customFileName: fileName,
-        );
-      } else if (file.path != null) {
-        url = await EduApiService().uploadImageFile(
-          File(file.path!),
-          folder: folder,
-          customFileName: fileName,
-        );
-      }
+      final bytes = await file.readAsBytes();
+      final url = await EduApiService().uploadImageFile(
+        bytes,
+        folder: folder,
+        customFileName: fileName,
+      );
 
       if (url != null && url.isNotEmpty) {
         SoundService.successFeedback();
