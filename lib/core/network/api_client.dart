@@ -12,11 +12,9 @@ class ApiClient {
   ApiClient._internal() {
     dio = Dio(
       BaseOptions(
-        baseUrl: kIsWeb
-            ? AppConstants.localApiBaseUrl
-            : AppConstants.defaultApiBaseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        baseUrl: AppConstants.defaultApiBaseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -35,7 +33,25 @@ class ApiClient {
           final customUrl = prefs.getString(AppConstants.keyApiUrl);
           if (customUrl != null && customUrl.isNotEmpty) {
             options.baseUrl = customUrl;
+          } else {
+            options.baseUrl = AppConstants.defaultApiBaseUrl;
           }
+
+          // Ensure full path always routes accurately to https://zoraredu-backend.vercel.app/
+          if (!options.path.startsWith('http')) {
+            String path = options.path;
+            if (path.startsWith('/')) {
+              path = path.substring(1);
+            }
+            if (path.startsWith('api/v1/')) {
+              options.path = '${AppConstants.productionApiBaseUrl}/$path';
+            } else if (path == 'health' || path == '') {
+              options.path = '${AppConstants.productionApiBaseUrl}/$path';
+            } else {
+              options.path = '${AppConstants.defaultApiBaseUrl}/$path';
+            }
+          }
+
           return handler.next(options);
         },
         onError: (DioException e, handler) {

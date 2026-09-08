@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
-  static const String defaultApiBaseUrl = 'http://10.0.2.2:4000/api';
-  static const String localApiBaseUrl = 'http://localhost:4000/api';
+  static const String productionApiBaseUrl = 'https://zoraredu-backend.vercel.app';
+  static const String defaultApiBaseUrl = 'https://zoraredu-backend.vercel.app/api/v1';
+  static const String localApiBaseUrl = 'https://zoraredu-backend.vercel.app/api/v1';
 
   // Storage Keys
   static const String keyAuthToken = 'zorar_auth_token';
