@@ -41,6 +41,16 @@ class EduApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> getStudentProfile(String id) async {
+    try {
+      final res = await _dio.get('/students/$id/profile');
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error getStudentProfile: $e');
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> createStudent(Map<String, dynamic> data) async {
     try {
       final res = await _dio.post('/students', data: data);
@@ -87,6 +97,39 @@ class EduApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> syncStages(List<String> stages) async {
+    try {
+      final res = await _dio.post('/academic/sync-stages', data: {'stages': stages});
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error syncStages: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createAcademicYear(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/academic/years', data: data);
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error createAcademicYear: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteAcademicYear(String id) async {
+    try {
+      await _dio.delete('/academic/years/$id');
+      return true;
+    } catch (e) {
+      debugPrint('Error deleteAcademicYear: $e');
+      return false;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getSubjects() async {
     try {
       final res = await _dio.get('/academic/subjects');
@@ -97,6 +140,26 @@ class EduApiService {
     } catch (e) {
       debugPrint('Error getSubjects: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createSubject(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/academic/subjects', data: data);
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error createSubject: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteSubject(String id) async {
+    try {
+      await _dio.delete('/academic/subjects/$id');
+      return true;
+    } catch (e) {
+      debugPrint('Error deleteSubject: $e');
+      return false;
     }
   }
 
@@ -213,6 +276,29 @@ class EduApiService {
     } catch (e) {
       debugPrint('Error getGroupAttendance: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> recordAssessment(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/attendance/assessment', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error recordAssessment: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> recordAbsence(String studentId, String groupId) async {
+    try {
+      await _dio.post('/attendance/record-absence', data: {
+        'studentId': studentId,
+        'groupId': groupId,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error recordAbsence: $e');
+      return false;
     }
   }
 
@@ -476,8 +562,50 @@ class EduApiService {
   }
 
   // ==========================================
-  // 10. Storefront / Online Platform APIs
+  // 10. Storefront & Online Platform Courses APIs
   // ==========================================
+  Future<List<Map<String, dynamic>>> getCourses() async {
+    try {
+      final res = await _dio.get('/courses');
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getCourses: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createCourse(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/courses', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error createCourse: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> grantCourseToGroup(String courseId, String groupId) async {
+    try {
+      final res = await _dio.post('/courses/$courseId/grant-group', data: {'groupId': groupId});
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error grantCourseToGroup: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getCurrentTenant() async {
+    try {
+      final res = await _dio.get('/tenants/current');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getCurrentTenant: $e');
+      return null;
+    }
+  }
   Future<bool> updateStorefrontConfig(Map<String, dynamic> config) async {
     try {
       final res = await _dio.put('/storefront/config', data: config);

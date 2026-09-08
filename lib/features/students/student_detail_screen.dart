@@ -2,19 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 import '../cashier/mobile_pos_screen.dart';
 
 class StudentDetailScreen extends ConsumerStatefulWidget {
   final String studentCode;
   final String studentName;
+  final String? studentId;
 
   const StudentDetailScreen({
     super.key,
     required this.studentCode,
     required this.studentName,
+    this.studentId,
   });
 
   @override
@@ -24,11 +29,39 @@ class StudentDetailScreen extends ConsumerStatefulWidget {
 class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String? _effectiveStudentId;
+  bool _isLoadingId = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _effectiveStudentId = widget.studentId;
+
+    if (_effectiveStudentId == null || _effectiveStudentId!.isEmpty) {
+      _resolveStudentId();
+    }
+  }
+
+  Future<void> _resolveStudentId() async {
+    setState(() => _isLoadingId = true);
+    try {
+      final students = await EduApiService().getStudents(search: widget.studentCode);
+      if (students.isNotEmpty) {
+        final match = students.firstWhere(
+          (s) => s['studentCode']?.toString() == widget.studentCode,
+          orElse: () => students.first,
+        );
+        if (mounted) {
+          setState(() {
+            _effectiveStudentId = match['id']?.toString();
+            _isLoadingId = false;
+          });
+        }
+        return;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingId = false);
   }
 
   @override
@@ -41,6 +74,18 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
 
+    if (_isLoadingId) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.studentName, style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final targetId = _effectiveStudentId ?? '';
+    final profileAsync = targetId.isNotEmpty
+        ? ref.watch(liveStudentProfileProvider(targetId))
+        : const AsyncValue.data(null);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -49,153 +94,279 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.messageSquare),
-            tooltip: 'إرسال تنبيه واتساب لولي الأمر',
+            icon: const Icon(LucideIcons.refreshCw, size: 20),
+            tooltip: 'تحديث البيانات',
             onPressed: () {
-              WhatsAppService.sendAbsenceAlert(
-                context: context,
-                parentPhone: '01012345678',
-                studentName: widget.studentName,
-                subjectName: 'اللغة العربية',
-                groupName: '3ث لغة عربية (أ)',
-                centerName: branding.centerName,
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.printer),
-            tooltip: 'طباعة كارت الطالب',
-            onPressed: () {
-              SoundService.successFeedback();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF10B981),
-                  content: Text('جاري إرسال كارت ${widget.studentName} إلى طابعة البلوتوث...'),
-                ),
-              );
+              if (targetId.isNotEmpty) {
+                ref.invalidate(liveStudentProfileProvider(targetId));
+              }
             },
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Student Header Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Theme.of(context).cardColor,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: branding.primaryColor.withOpacity(0.15),
-                  child: Text(
-                    widget.studentName.isNotEmpty ? widget.studentName[0] : 'ط',
-                    style: GoogleFonts.cairo(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: branding.primaryColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.studentName,
-                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
+      body: profileAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(LucideIcons.alertCircle, size: 48, color: Colors.amber),
+              const SizedBox(height: 12),
+              Text('تعذر تحميل بيانات الطالب: $err', style: GoogleFonts.cairo(fontSize: 14)),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(liveStudentProfileProvider(targetId)),
+                child: const Text('إعادة المحاولة'),
+              ),
+            ],
+          ),
+        ),
+        data: (profile) {
+          final student = profile ?? {};
+          final name = student['name']?.toString() ?? widget.studentName;
+          final code = student['studentCode']?.toString() ?? widget.studentCode;
+          final gradeName = student['academicYear']?['name']?.toString() ?? 'غير محدد';
+          final phone = student['phone']?.toString() ?? '-';
+          final guardianPhone = student['guardianPhone']?.toString() ?? '-';
+          final schoolName = student['schoolName']?.toString() ?? 'غير مسجل';
+          final walletBalance = parseDouble(student['walletBalance']);
+          final points = parseInt(student['points']);
+          final groups = (student['groups'] as List?) ?? [];
+          final monthlySubs = (student['monthlySubs'] as List?) ?? [];
+          final transactions = (student['transactions'] as List?) ?? [];
+          final attendances = (student['attendances'] as List?) ?? [];
+          final assessments = (student['assessments'] as List?) ?? [];
+
+          return Column(
+            children: [
+              // Student Header Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Theme.of(context).cardColor,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: branding.primaryColor.withOpacity(0.15),
+                      child: Text(
+                        name.isNotEmpty ? name[0] : 'ط',
+                        style: GoogleFonts.cairo(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: branding.primaryColor,
+                        ),
                       ),
-                      Row(
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: branding.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              widget.studentCode,
-                              style: GoogleFonts.cairo(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: branding.primaryColor,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
                           Text(
-                            'الصف الثالث الثانوي',
-                            style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
+                            name,
+                            style: GoogleFonts.cairo(fontSize: 15.5, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: branding.primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  code,
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: branding.primaryColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  gradeName,
+                                  style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        backgroundColor: branding.primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(LucideIcons.receipt, size: 16),
+                      label: const Text('سداد POS'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => MobilePosScreen(initialStudentCode: code),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  icon: const Icon(LucideIcons.receipt, size: 16),
-                  label: const Text('سداد'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (ctx) => const MobilePosScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          // 4 Sub-Tabs
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            labelColor: branding.primaryColor,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: branding.primaryColor,
-            labelStyle: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12.5),
-            unselectedLabelStyle: GoogleFonts.cairo(fontSize: 12),
-            tabs: const [
-              Tab(text: 'نظرة عامة', icon: Icon(LucideIcons.user, size: 18)),
-              Tab(text: 'المجموعات', icon: Icon(LucideIcons.layers, size: 18)),
-              Tab(text: 'الماليات والمدفوعات', icon: Icon(LucideIcons.wallet, size: 18)),
-              Tab(text: 'سجل الحضور', icon: Icon(LucideIcons.calendarCheck, size: 18)),
+              // 4 Sub-Tabs
+              TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                labelColor: branding.primaryColor,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: branding.primaryColor,
+                labelStyle: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+                unselectedLabelStyle: GoogleFonts.cairo(fontSize: 11.5),
+                tabs: const [
+                  Tab(text: 'نظرة عامة', icon: Icon(LucideIcons.user, size: 18)),
+                  Tab(text: 'المجموعات', icon: Icon(LucideIcons.layers, size: 18)),
+                  Tab(text: 'الماليات والفواتير', icon: Icon(LucideIcons.wallet, size: 18)),
+                  Tab(text: 'الحضور والدرجات', icon: Icon(LucideIcons.calendarCheck, size: 18)),
+                ],
+              ),
+
+              // Tab Views
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOverviewTab(
+                      context: context,
+                      phone: phone,
+                      guardianPhone: guardianPhone,
+                      schoolName: schoolName,
+                      studentName: name,
+                      studentCode: code,
+                      gradeName: gradeName,
+                      points: points,
+                      walletBalance: walletBalance,
+                      primaryColor: branding.primaryColor,
+                      centerName: branding.centerName,
+                    ),
+                    _buildGroupsTab(groups, branding.primaryColor),
+                    _buildFinancesTab(monthlySubs, transactions, walletBalance, branding.primaryColor, code),
+                    _buildAttendanceTab(attendances, assessments, branding.primaryColor),
+                  ],
+                ),
+              ),
             ],
-          ),
-
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(context, branding.primaryColor),
-                _buildGroupsTab(context, branding.primaryColor),
-                _buildFinancesTab(context, branding.primaryColor),
-                _buildAttendanceTab(context, branding.primaryColor),
-              ],
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildOverviewTab(BuildContext context, Color primaryColor) {
+  Widget _buildOverviewTab({
+    required BuildContext context,
+    required String phone,
+    required String guardianPhone,
+    required String schoolName,
+    required String studentName,
+    required String studentCode,
+    required String gradeName,
+    required int points,
+    required double walletBalance,
+    required Color primaryColor,
+    required String centerName,
+  }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoTile('هاتف الطالب', '01012345678', LucideIcons.phone),
-          _buildInfoTile('هاتف ولي الأمر (واتساب)', '01198765432', LucideIcons.messageSquare),
-          _buildInfoTile('المدرسة الحالية', 'مدرسة المتفوقين الثانوية بنين', LucideIcons.building2),
-          _buildInfoTile('تاريخ القيد بالسنتر', '15 أغسطس 2026', LucideIcons.calendar),
-          _buildInfoTile('العنوان / المنطقة', 'مدينة نصر - القاهرة', LucideIcons.mapPin),
+          // Quick Balance & Points Strip
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: primaryColor.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(LucideIcons.award, color: primaryColor, size: 24),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('نقاط الالتزام', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                          Text('$points نقطة', style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold, color: primaryColor)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(LucideIcons.wallet, color: Color(0xFF10B981), size: 24),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('رصيد المحفظة', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                          Text('${walletBalance.toStringAsFixed(0)} ج.م', style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
+
+          _buildInfoTile('هاتف الطالب المباشر', phone, LucideIcons.phone),
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(LucideIcons.messageSquare, size: 20, color: Color(0xFF10B981)),
+              title: Text('واتساب ولي الأمر', style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
+              subtitle: Text(guardianPhone, style: GoogleFonts.cairo(fontSize: 13.5, fontWeight: FontWeight.bold)),
+              trailing: IconButton(
+                icon: const Icon(LucideIcons.send, color: Color(0xFF10B981), size: 20),
+                tooltip: 'إرسال رسالة واتساب لولي الأمر',
+                onPressed: () {
+                  WhatsAppService.sendAbsenceAlert(
+                    context: context,
+                    parentPhone: guardianPhone,
+                    studentName: studentName,
+                    subjectName: 'المتابعة الدورية',
+                    groupName: gradeName,
+                    centerName: centerName,
+                  );
+                },
+              ),
+            ),
+          ),
+          _buildInfoTile('المدرسة المقيد بها', schoolName, LucideIcons.building2),
+          _buildInfoTile('المرحلة / الصف الدراسي', gradeName, LucideIcons.graduationCap),
+          const SizedBox(height: 16),
+
           // Digital ID Card Preview Box
           Container(
             width: double.infinity,
@@ -228,14 +399,14 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
                   ),
                   child: Column(
                     children: [
-                      Icon(LucideIcons.qrCode, color: Colors.black, size: 80),
+                      Icon(LucideIcons.qrCode, color: Colors.black, size: 75),
                       const SizedBox(height: 6),
                       Text(
-                        widget.studentCode,
+                        studentCode,
                         style: GoogleFonts.cairo(
                           color: Colors.black,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 15,
                         ),
                       ),
                     ],
@@ -243,8 +414,12 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  widget.studentName,
+                  studentName,
                   style: GoogleFonts.cairo(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  gradeName,
+                  style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
@@ -254,76 +429,288 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
     );
   }
 
-  Widget _buildGroupsTab(BuildContext context, Color primaryColor) {
-    return ListView(
+  Widget _buildGroupsTab(List groups, Color primaryColor) {
+    if (groups.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.layers, size: 48, color: Colors.grey.withOpacity(0.5)),
+            const SizedBox(height: 12),
+            Text('الطالب غير مقيد في أي مجموعة حالياً', style: GoogleFonts.cairo(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
       padding: const EdgeInsets.all(14),
-      children: [
-        _buildGroupCard(
-          groupName: '3ث لغة عربية (المجموعة الأولى)',
-          teacher: 'أ/ أحمد كمال',
-          schedule: 'السبت والثلاثاء (02:00 م - 04:00 م)',
-          room: 'قاعة (1)',
-          fee: '450 ج.م / شهر',
-          primaryColor: primaryColor,
-        ),
-        const SizedBox(height: 10),
-        _buildGroupCard(
-          groupName: '3ث كيمياء (مجموعة المتفوقين)',
-          teacher: 'أ/ حسام فؤاد',
-          schedule: 'الأحد والأربعاء (04:30 م - 06:30 م)',
-          room: 'قاعة (2)',
-          fee: '420 ج.م / شهر',
-          primaryColor: primaryColor,
-        ),
-      ],
+      itemCount: groups.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (ctx, idx) {
+        final item = groups[idx];
+        final g = item['group'] is Map ? item['group'] : item;
+        final groupName = g['name']?.toString() ?? 'مجموعة دراسية';
+        final teacherName = g['teacher']?['name']?.toString() ?? 'المحاضر';
+        final subjectName = g['subject']?['name']?.toString() ?? 'المادة';
+        final monthlyFee = parseDouble(g['monthlyFee'] ?? g['pricePerSession']);
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        groupName,
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'مقيد ومفعل',
+                        style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('$subjectName • المحاضر: $teacherName', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+                const Divider(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'الاشتراك الشهري: ${monthlyFee.toStringAsFixed(0)} ج.م',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12.5, color: primaryColor),
+                    ),
+                    const Icon(LucideIcons.checkCircle2, color: Color(0xFF10B981), size: 18),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildFinancesTab(BuildContext context, Color primaryColor) {
+  Widget _buildFinancesTab(
+    List monthlySubs,
+    List transactions,
+    double walletBalance,
+    Color primaryColor,
+    String studentCode,
+  ) {
+    final unpaidSubs = monthlySubs.where((s) => s['isPaid'] != true).toList();
+
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
-        // Balance Banner
+        // Status Banner
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withOpacity(0.12),
+            color: unpaidSubs.isEmpty
+                ? const Color(0xFF10B981).withOpacity(0.12)
+                : Colors.amber.withOpacity(0.12),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+            border: Border.all(
+              color: unpaidSubs.isEmpty
+                  ? const Color(0xFF10B981).withOpacity(0.3)
+                  : Colors.amber.withOpacity(0.4),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'الموقف المالي الحالي: مسدد بالكامل ✅',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF10B981)),
+                unpaidSubs.isEmpty
+                    ? 'الموقف المالي: مسدد بالكامل ✅'
+                    : 'يوجد ${unpaidSubs.length} اشتراك شهري غير مسدد ⚠️',
+                style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: unpaidSubs.isEmpty ? const Color(0xFF10B981) : Colors.amber[800],
+                ),
               ),
-              Text(
-                '0.0 ج.م متبقي',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (ctx) => MobilePosScreen(initialStudentCode: studentCode)),
+                  );
+                },
+                child: const Text('سداد'),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        Text('سجل الفواتير والإيصالات المسددة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 10),
-        _buildReceiptItem('REC-9021', 'اشتراك شهر سبتمبر (4 حصص)', '450 ج.م', 'كاش', '01 سبتمبر 2026'),
-        _buildReceiptItem('REC-8840', 'ملزمة النحو الشاملة 2026', '85 ج.م', 'فودافون كاش', '25 أغسطس 2026'),
-        _buildReceiptItem('REC-8112', 'رسوم استمارة الحجز والقيد', '100 ج.م', 'كاش', '15 أغسطس 2026'),
+        const SizedBox(height: 16),
+
+        if (unpaidSubs.isNotEmpty) ...[
+          Text('الاشتراكات الشهرية المستحقة للسداد', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+          const SizedBox(height: 8),
+          ...unpaidSubs.map((sub) {
+            final grpName = sub['group']?['name']?.toString() ?? 'اشتراك شهري';
+            final monthNo = sub['monthNumber']?.toString() ?? '1';
+            final fee = parseDouble(sub['group']?['monthlyFee']);
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const Icon(LucideIcons.alertTriangle, color: Colors.amber),
+                title: Text('$grpName (شهر $monthNo)', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: Text('حالة السداد: غير مسدد ❌', style: GoogleFonts.cairo(fontSize: 11, color: Colors.red)),
+                trailing: Text('${fee.toStringAsFixed(0)} ج.م', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.red)),
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+        ],
+
+        Text('سجل المعاملات والإيصالات المسددة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        if (transactions.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('لا توجد معاملات مسجلة حتى الآن', style: GoogleFonts.cairo(color: Colors.grey)),
+            ),
+          )
+        else
+          ...transactions.map((tx) {
+            final recNo = tx['receiptNo']?.toString() ?? 'REC';
+            final desc = tx['description']?.toString() ?? 'سداد رسوم';
+            final method = tx['method']?.toString() ?? 'CASH';
+            final amount = parseDouble(tx['amount']);
+            final dateStr = tx['createdAt']?.toString().split('T').first ?? '';
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const Icon(LucideIcons.receipt, color: Color(0xFF10B981)),
+                title: Text(desc, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: Text('$recNo • $method • $dateStr', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+                trailing: Text(
+                  '${amount.toStringAsFixed(0)} ج.م',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF10B981)),
+                ),
+              ),
+            );
+          }),
       ],
     );
   }
 
-  Widget _buildAttendanceTab(BuildContext context, Color primaryColor) {
-    return ListView(
+  Widget _buildAttendanceTab(List attendances, List assessments, Color primaryColor) {
+    if (attendances.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.calendarX, size: 48, color: Colors.grey.withOpacity(0.5)),
+            const SizedBox(height: 12),
+            Text('لا توجد سجلات حضور مسجلة حتى الآن', style: GoogleFonts.cairo(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
       padding: const EdgeInsets.all(14),
-      children: [
-        _buildAttendanceRow('حصة 5: مراجعة النصوص والبلاغة', '05 سبتمبر 2026', 'حاضر (02:04 م)', true),
-        _buildAttendanceRow('حصة 4: تدريبات النحو الشاملة', '02 سبتمبر 2026', 'حاضر (02:00 م)', true),
-        _buildAttendanceRow('حصة 3: مدرسة الإحياء والبعث', '29 أغسطس 2026', 'حاضر متأخر (02:22 م)', true),
-        _buildAttendanceRow('حصة 2: شرح الاستعارة والكناية', '26 أغسطس 2026', 'غائب بعذر (مرضي)', false),
-      ],
+      itemCount: attendances.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (ctx, idx) {
+        final att = attendances[idx];
+        final grpName = att['group']?['name']?.toString() ?? 'حصة دراسية';
+        final scannedAt = att['scannedAt']?.toString().split('T').first ?? '';
+        final status = att['status']?.toString() ?? 'PRESENT';
+        final isPresent = status == 'PRESENT';
+        final isGrace = att['isGraceSession'] == true;
+        final assessment = att['assessment'] as Map<String, dynamic>?;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(grpName, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isGrace
+                            ? Colors.amber.withOpacity(0.15)
+                            : isPresent
+                                ? const Color(0xFF10B981).withOpacity(0.12)
+                                : Colors.red.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isGrace ? 'حصة سماح ⚠️' : isPresent ? 'حاضر ✅' : 'غائب ❌',
+                        style: GoogleFonts.cairo(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isGrace ? Colors.amber[800] : isPresent ? const Color(0xFF10B981) : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('تاريخ الحصة: $scannedAt', style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
+                if (assessment != null) ...[
+                  const Divider(height: 16),
+                  Row(
+                    children: [
+                      if (assessment['homeworkStatus'] != null) ...[
+                        Text(
+                          'الواجب: ${assessment['homeworkStatus'] == 'DONE' ? 'كامل وممتاز ⭐' : assessment['homeworkStatus'] == 'INCOMPLETE' ? 'ناقص ⚠️' : 'لم يسلم ❌'}',
+                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 14),
+                      ],
+                      if (assessment['quizScore'] != null) ...[
+                        Text(
+                          'التسميع: ${assessment['quizScore']} / ${assessment['quizTotal'] ?? 10}',
+                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (assessment['behaviorNotes'] != null && assessment['behaviorNotes'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'ملاحظة المعلم: ${assessment['behaviorNotes']}',
+                      style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700]),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -334,70 +721,6 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
         leading: Icon(icon, size: 20, color: Colors.grey),
         title: Text(title, style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
         subtitle: Text(value, style: GoogleFonts.cairo(fontSize: 13.5, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _buildGroupCard({
-    required String groupName,
-    required String teacher,
-    required String schedule,
-    required String room,
-    required String fee,
-    required Color primaryColor,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(groupName, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text('$teacher • $room', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 4),
-            Text(schedule, style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700])),
-            const Divider(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('الاشتراك الشهري: $fee',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12.5, color: primaryColor)),
-                const Icon(LucideIcons.checkCircle2, color: Color(0xFF10B981), size: 18),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReceiptItem(String id, String title, String amount, String method, String date) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: const Icon(LucideIcons.receipt, color: Color(0xFF10B981)),
-        title: Text(title, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
-        subtitle: Text('$id • $method • $date', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
-        trailing: Text(amount,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF10B981))),
-      ),
-    );
-  }
-
-  Widget _buildAttendanceRow(String title, String date, String status, bool isPresent) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(
-          isPresent ? LucideIcons.checkCircle2 : LucideIcons.xCircle,
-          color: isPresent ? const Color(0xFF10B981) : Colors.red,
-        ),
-        title: Text(title, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
-        subtitle: Text(date, style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
-        trailing: Text(status,
-            style: GoogleFonts.cairo(
-                fontSize: 12, fontWeight: FontWeight.bold, color: isPresent ? const Color(0xFF10B981) : Colors.red)),
       ),
     );
   }

@@ -86,3 +86,20 @@ final liveLowStockBooksProvider = FutureProvider.autoDispose<List<Map<String, dy
 final liveDailyReportProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String?>((ref, date) async {
   return await EduApiService().getDailyFinanceReport(date: date);
 });
+
+// 14. Student Profile Live Provider
+final liveStudentProfileProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, studentId) async {
+  if (studentId.isEmpty) return null;
+  return await EduApiService().getStudentProfile(studentId);
+});
+
+// 15. Online Courses Live Provider
+final liveCoursesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return await EduApiService().getCourses();
+});
+
+// 16. Current Tenant Details & Quota Provider
+final liveTenantDetailsProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+  return await EduApiService().getCurrentTenant();
+});
+

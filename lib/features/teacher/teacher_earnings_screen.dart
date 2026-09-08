@@ -2,21 +2,65 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
+import '../auth/auth_provider.dart';
 
 class TeacherEarningsScreen extends ConsumerWidget {
-  const TeacherEarningsScreen({super.key});
+  final String? teacherId;
+  final String? teacherName;
+
+  const TeacherEarningsScreen({
+    super.key,
+    this.teacherId,
+    this.teacherName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branding = ref.watch(brandingProvider);
+    final user = ref.watch(authProvider).user;
+    final txAsync = ref.watch(liveTransactionsProvider);
+    final groupsAsync = ref.watch(liveGroupsProvider);
+
+    final currentTeacherName = teacherName ?? user?.name ?? 'المعلم';
+    final txData = txAsync.value ?? {};
+    final txList = (txData['transactions'] as List?) ?? [];
+
+    // Calculate total earnings from transactions
+    double totalCollected = 0.0;
+    for (final tx in txList) {
+      totalCollected += parseDouble(tx['amount']);
+    }
+
+    final myGroups = (groupsAsync.value ?? []).where((g) {
+      if (teacherId != null && teacherId!.isNotEmpty) {
+        return g['teacherId']?.toString() == teacherId;
+      }
+      return true;
+    }).toList();
+
+    int totalStudents = 0;
+    for (final g in myGroups) {
+      totalStudents += parseInt(g['_count']?['students']);
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'كشف حساب ومستحقات المعلم',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          'مستحقات وكشف حساب $currentTeacherName',
+          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.refreshCw, size: 20),
+            onPressed: () {
+              ref.invalidate(liveTransactionsProvider);
+              ref.invalidate(liveGroupsProvider);
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -27,11 +71,8 @@ class TeacherEarningsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF0F172A),
-                    const Color(0xFF1E293B),
-                  ],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -42,12 +83,12 @@ class TeacherEarningsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'إجمالي مستحقاتك عن الشهر الجاري (سبتمبر 2026)',
+                    'إجمالي التحصيلات المسجلة للشهر الجاري',
                     style: GoogleFonts.cairo(color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '29,400 ج.م',
+                    '${totalCollected.toStringAsFixed(0)} ج.م',
                     style: GoogleFonts.cairo(
                       color: branding.primaryColor,
                       fontSize: 32,
@@ -64,7 +105,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'نسبة المعلم المعتمدة: 70%',
+                          'المجموعات المفعلة: ${myGroups.length}',
                           style: GoogleFonts.cairo(
                             color: const Color(0xFF10B981),
                             fontSize: 11.5,
@@ -74,8 +115,8 @@ class TeacherEarningsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        '16 حصة • 185 طالب',
-                        style: GoogleFonts.cairo(color: Colors.white60, fontSize: 12),
+                        'إجمالي الطلاب: $totalStudents طالب',
+                        style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
                       ),
                     ],
                   ),
@@ -84,111 +125,49 @@ class TeacherEarningsScreen extends ConsumerWidget {
             ),
 
             const SizedBox(height: 24),
-
             Text(
-              'سجل الحصص المنعقدة وتفاصيل الحضور',
+              'سجل المعاملات والتحصيلات الأخيرة',
               style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
-            _buildSessionItem(
-              sessionTitle: 'حصة 5: مراجعة البلاغة والنصوص المتحررة',
-              groupName: '3ث لغة عربية (أ)',
-              date: 'السبت 5 سبتمبر 2026',
-              attendance: '42 حاضر من 45',
-              earnings: '2,646 ج.م',
-              isSettled: false,
-              primaryColor: branding.primaryColor,
-            ),
-            const SizedBox(height: 10),
-            _buildSessionItem(
-              sessionTitle: 'حصة 4: تدريبات النحو الشاملة',
-              groupName: '3ث لغة عربية (أ)',
-              date: 'الخميس 3 سبتمبر 2026',
-              attendance: '44 حاضر من 45',
-              earnings: '2,772 ج.م',
-              isSettled: true,
-              primaryColor: branding.primaryColor,
-            ),
-            const SizedBox(height: 10),
-            _buildSessionItem(
-              sessionTitle: 'حصة 3: مدرسة الإحياء والبعث',
-              groupName: '3ث لغة عربية (أ)',
-              date: 'السبت 29 أغسطس 2026',
-              attendance: '43 حاضر من 45',
-              earnings: '2,709 ج.م',
-              isSettled: true,
-              primaryColor: branding.primaryColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            if (txList.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(LucideIcons.receipt, size: 48, color: Colors.grey.withOpacity(0.4)),
+                      const SizedBox(height: 12),
+                      Text('لا توجد حركات تحصيل مسجلة بعد', style: GoogleFonts.cairo(color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ...txList.map((tx) {
+                final desc = tx['description']?.toString() ?? 'تحصيل مالي';
+                final amount = parseDouble(tx['amount']);
+                final date = tx['createdAt']?.toString().split('T').first ?? '';
+                final recNo = tx['receiptNo']?.toString() ?? '';
+                final method = tx['method']?.toString() ?? 'CASH';
 
-  Widget _buildSessionItem({
-    required String sessionTitle,
-    required String groupName,
-    required String date,
-    required String attendance,
-    required String earnings,
-    required bool isSettled,
-    required Color primaryColor,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(LucideIcons.calendarCheck, color: primaryColor, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    sessionTitle,
-                    style: GoogleFonts.cairo(fontSize: 13.5, fontWeight: FontWeight.bold),
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
+                      child: const Icon(LucideIcons.receipt, color: Color(0xFF10B981), size: 20),
+                    ),
+                    title: Text(desc, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: Text('$recNo • $method • $date', style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
+                    trailing: Text(
+                      '${amount.toStringAsFixed(0)} ج.م',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF10B981)),
+                    ),
                   ),
-                  Text(
-                    '$groupName • $date',
-                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'العدد: $attendance',
-                    style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700]),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  earnings,
-                  style: GoogleFonts.cairo(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF10B981),
-                  ),
-                ),
-                Text(
-                  isSettled ? 'مسددة ✅' : 'قيد الصرف ⏳',
-                  style: GoogleFonts.cairo(
-                    fontSize: 10.5,
-                    color: isSettled ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                  ),
-                ),
-              ],
-            ),
+                );
+              }),
           ],
         ),
       ),

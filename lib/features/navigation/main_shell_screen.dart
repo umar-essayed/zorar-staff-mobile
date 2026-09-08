@@ -7,7 +7,11 @@ import '../../core/services/branding_service.dart';
 import '../../core/services/security_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 import '../academic/academic_groups_screen.dart';
+import '../academic/groups_management_screen.dart';
+import '../academic/subjects_management_screen.dart';
+import '../academic/academic_years_management_screen.dart';
 import '../admissions/admissions_screen.dart';
 import '../attendance/attendance_scanner_screen.dart';
 import '../auth/auth_provider.dart';
@@ -18,6 +22,7 @@ import '../cashier/mobile_pos_screen.dart';
 import '../dashboard/admin_dashboard_screen.dart';
 import '../dashboard/assistant_dashboard_screen.dart';
 import '../dashboard/teacher_dashboard_screen.dart';
+import '../platform/online_platform_screen.dart';
 import '../platform/platform_settings_screen.dart';
 import '../settings/branding_settings_screen.dart';
 import '../staff/staff_management_screen.dart';
@@ -325,9 +330,27 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  '${user?.name} (${user?.roleArabicTitle})',
-                  style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${user?.name} (${user?.roleArabicTitle})',
+                        style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'الكوتا: ${parseInt(user?.tenant?['quotaBalance'], 100)}',
+                        style: GoogleFonts.cairo(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -345,11 +368,11 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           ),
           if (user?.isTeacher ?? false) ...[
             ListTile(
-              leading: const Icon(LucideIcons.checkSquare),
+              leading: const Icon(LucideIcons.penTool),
               title: Text('رصد درجات وواجب الحصة', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const LiveClassCockpitScreen(groupName: 'مجموعة 3ث لغة عربية (أ)', sessionNumber: 5)));
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const LiveClassCockpitScreen()));
               },
             ),
             ListTile(
@@ -383,7 +406,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           const Divider(),
 
           // Section 2: Academic & Students
-          _buildDrawerSectionTitle('الشؤون الأكاديمية والطلاب'),
+          _buildDrawerSectionTitle('الشؤون الأكاديمية والصفوف'),
           ListTile(
             leading: const Icon(LucideIcons.users),
             title: Text('دليل وقيد الطلاب', style: GoogleFonts.cairo(fontSize: 13)),
@@ -394,15 +417,31 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           ),
           ListTile(
             leading: const Icon(LucideIcons.layers),
-            title: Text('المجموعات والمراحل الدراسية', style: GoogleFonts.cairo(fontSize: 13)),
+            title: Text('إدارة المجموعات والقاعات', style: GoogleFonts.cairo(fontSize: 13)),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const AcademicGroupsScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const GroupsManagementScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(LucideIcons.bookOpen),
+            title: Text('المواد الدراسية', style: GoogleFonts.cairo(fontSize: 13)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const SubjectsManagementScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(LucideIcons.graduationCap),
+            title: Text('الصفوف وتخصيص البكالوريا', style: GoogleFonts.cairo(fontSize: 13)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const AcademicYearsManagementScreen()));
             },
           ),
           if (!(user?.isTeacher ?? false))
             ListTile(
-              leading: const Icon(LucideIcons.bookOpen),
+              leading: const Icon(LucideIcons.fileText),
               title: Text('مخزن الملازم والمذكرات', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
@@ -414,7 +453,15 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             const Divider(),
 
             // Section 3: Admin & Finance
-            _buildDrawerSectionTitle('الإدارة والماليات (Admin)'),
+            _buildDrawerSectionTitle('الإدارة والمنصة (Admin)'),
+            ListTile(
+              leading: const Icon(LucideIcons.video),
+              title: Text('إدارة المنصة والكورسات والحصص', style: GoogleFonts.cairo(fontSize: 13)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const OnlinePlatformScreen()));
+              },
+            ),
             ListTile(
               leading: const Icon(LucideIcons.fileSpreadsheet),
               title: Text('سجل وجرد المدفوعات والخزينة', style: GoogleFonts.cairo(fontSize: 13)),
@@ -424,7 +471,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(LucideIcons.graduationCap),
+              leading: const Icon(LucideIcons.badgePercent),
               title: Text('تسويات وعمولات المعلمين', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
@@ -441,7 +488,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             ),
             ListTile(
               leading: const Icon(LucideIcons.globe),
-              title: Text('المنصة الإلكترونية (Portal)', style: GoogleFonts.cairo(fontSize: 13)),
+              title: Text('إعدادات المنصة والمتجر', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const PlatformSettingsScreen()));
