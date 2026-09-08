@@ -7,6 +7,8 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 
+import '../../core/services/upload_service.dart';
+
 class BookFormDialog extends ConsumerStatefulWidget {
   const BookFormDialog({super.key});
 
@@ -21,6 +23,9 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
   final stockCtrl = TextEditingController(text: '50');
   String? selectedTeacherId;
   String? selectedYearId;
+  String? pdfUrl;
+  String? pdfFileName;
+  bool _isUploadingPdf = false;
   bool _isSaving = false;
 
   @override
@@ -142,6 +147,77 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              Text('نسخة رقمية من الملزمة (PDF اختياري):',
+                  style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              if (pdfUrl != null && pdfUrl!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(LucideIcons.fileText, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          pdfFileName ?? 'ملف الملزمة.pdf',
+                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 18),
+                        onPressed: () => setState(() {
+                          pdfUrl = null;
+                          pdfFileName = null;
+                        }),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: branding.primaryColor,
+                    side: BorderSide(color: branding.primaryColor.withOpacity(0.5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  icon: _isUploadingPdf
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(LucideIcons.uploadCloud, size: 16),
+                  label: Text(_isUploadingPdf ? 'جاري رفع الملف...' : 'رفع نسخة PDF للملزمة',
+                      style: GoogleFonts.cairo(fontSize: 12)),
+                  onPressed: _isUploadingPdf
+                      ? null
+                      : () async {
+                          setState(() => _isUploadingPdf = true);
+                          try {
+                            final uploaded = await UploadService.pickAndUploadDocument(
+                              allowedExtensions: ['pdf'],
+                              folder: 'books',
+                            );
+                            if (uploaded != null) {
+                              setState(() {
+                                pdfUrl = uploaded.url;
+                                pdfFileName = uploaded.name;
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('فشل رفع الملف: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isUploadingPdf = false);
+                          }
+                        },
+                ),
             ],
           ),
         ),
@@ -168,6 +244,7 @@ class _BookFormDialogState extends ConsumerState<BookFormDialog> {
                         'academicYearId': selectedYearId,
                         'salePrice': double.tryParse(priceCtrl.text) ?? 0.0,
                         'stockQuantity': int.tryParse(stockCtrl.text) ?? 0,
+                        'pdfAttachmentUrl': pdfUrl,
                       });
                       ref.invalidate(liveBooksProvider);
                       ref.invalidate(liveLowStockBooksProvider);

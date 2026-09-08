@@ -24,6 +24,7 @@ import '../dashboard/admin_dashboard_screen.dart';
 import '../dashboard/assistant_dashboard_screen.dart';
 import '../dashboard/teacher_dashboard_screen.dart';
 import '../platform/online_platform_screen.dart';
+import '../platform/online_lessons_management_screen.dart';
 import '../platform/platform_settings_screen.dart';
 import '../settings/branding_settings_screen.dart';
 import '../staff/staff_management_screen.dart';
@@ -476,10 +477,18 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             ),
             ListTile(
               leading: const Icon(LucideIcons.video),
-              title: Text('إدارة المنصة والكورسات والحصص', style: GoogleFonts.cairo(fontSize: 13)),
+              title: Text('المنصة الإلكترونية والكورسات', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const OnlinePlatformScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.listVideo, color: Color(0xFF2563EB)),
+              title: Text('إدارة الحصص والكويزات الأونلاين', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const OnlineLessonsManagementScreen()));
               },
             ),
             ListTile(

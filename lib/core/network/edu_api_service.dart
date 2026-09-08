@@ -587,6 +587,126 @@ class EduApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> getCourseDetails(String courseId) async {
+    try {
+      final res = await _dio.get('/courses/$courseId');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getCourseDetails: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> addChapter(String courseId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/courses/$courseId/chapters', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error addChapter: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateChapter(String chapterId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/courses/chapters/$chapterId', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error updateChapter: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteChapter(String chapterId) async {
+    try {
+      final res = await _dio.delete('/courses/chapters/$chapterId');
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('Error deleteChapter: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> addLesson(String chapterId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/courses/chapters/$chapterId/lessons', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error addLesson: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateLesson(String lessonId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/courses/lessons/$lessonId', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error updateLesson: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteLesson(String lessonId) async {
+    try {
+      final res = await _dio.delete('/courses/lessons/$lessonId');
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('Error deleteLesson: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> reorderLessons(String chapterId, List<String> lessonIds) async {
+    try {
+      final res = await _dio.post('/courses/chapters/$chapterId/reorder', data: {'lessonIds': lessonIds});
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      debugPrint('Error reorderLessons: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createExam(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/exams', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error createExam: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getExam(String examId) async {
+    try {
+      final res = await _dio.get('/exams/$examId');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getExam: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateExam(String examId, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/exams/$examId', data: data);
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error updateExam: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteExam(String examId) async {
+    try {
+      final res = await _dio.delete('/exams/$examId');
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('Error deleteExam: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>?> grantCourseToGroup(String courseId, String groupId) async {
     try {
       final res = await _dio.post('/courses/$courseId/grant-group', data: {'groupId': groupId});
@@ -629,17 +749,18 @@ class EduApiService {
   // ==========================================
   // 11. Cloudflare R2 Uploads API
   // ==========================================
-  Future<String?> uploadImageFile(dynamic file, {String folder = 'general'}) async {
+  Future<String?> uploadImageFile(dynamic file, {String folder = 'general', String? customFileName}) async {
     try {
       FormData formData;
       if (file is File) {
-        final fileName = file.path.split('/').last;
+        final fileName = customFileName ?? file.path.split('/').last;
         formData = FormData.fromMap({
           'file': await MultipartFile.fromFile(file.path, filename: fileName),
         });
       } else if (file is List<int>) {
+        final fileName = customFileName ?? 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
         formData = FormData.fromMap({
-          'file': MultipartFile.fromBytes(file, filename: 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg'),
+          'file': MultipartFile.fromBytes(file, filename: fileName),
         });
       } else {
         throw Exception('صيغة الملف غير مدعومة');
