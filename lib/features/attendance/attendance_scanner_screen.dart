@@ -134,7 +134,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
       }
 
       if (isWarning) {
-        SoundService.lightImpact();
+        SoundService.warningFeedback();
         setState(() {
           _lastScanFeedback = '$errMsg ⚠️';
           _feedbackColor = const Color(0xFFF59E0B);

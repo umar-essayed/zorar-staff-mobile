@@ -8,6 +8,7 @@ import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
 import '../auth/auth_provider.dart';
+import '../quota/quota_topup_screen.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -189,65 +190,81 @@ class AdminDashboardScreen extends ConsumerWidget {
                   Builder(
                     builder: (ctx) {
                       final tenantDetails = ref.watch(liveTenantDetailsProvider).value ?? user?.tenant ?? {};
-                      final quotaBalance = parseInt(tenantDetails['quotaBalance'], 100);
-                      final planName = tenantDetails['plan']?.toString() ?? 'STANDARD';
+                      final quotaBalance = parseInt(tenantDetails['quotaBalance'], 10);
+                      final planName = tenantDetails['plan']?.toString() ?? 'PRO';
                       final totalStudents = studentsAsync.value?.length ?? 0;
 
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              branding.primaryColor.withOpacity(0.12),
-                              branding.secondaryColor.withOpacity(0.06),
-                            ],
-                            begin: Alignment.topRight,
-                            end: Alignment.bottomLeft,
+                      return InkWell(
+                        onTap: () {
+                          SoundService.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (c) => const QuotaTopupScreen()),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                branding.primaryColor.withOpacity(0.12),
+                                branding.secondaryColor.withOpacity(0.06),
+                              ],
+                              begin: Alignment.topRight,
+                              end: Alignment.bottomLeft,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: branding.primaryColor.withOpacity(0.3)),
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: branding.primaryColor.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundColor: branding.primaryColor.withOpacity(0.15),
-                              child: Icon(LucideIcons.gauge, color: branding.primaryColor, size: 24),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'رصيد كوتا وسعة الطلاب بالسنتر',
-                                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: branding.primaryColor,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          'باقة $planName',
-                                          style: GoogleFonts.cairo(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'الرصيد المتاح: $quotaBalance طالب إضافي • المسجلين: $totalStudents طالب',
-                                    style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[700]),
-                                  ),
-                                ],
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: branding.primaryColor.withOpacity(0.15),
+                                child: Icon(LucideIcons.gauge, color: branding.primaryColor, size: 24),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'الرصيد',
+                                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14.5),
+                                        ),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: branding.primaryColor,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                'باقة $planName',
+                                                style: GoogleFonts.cairo(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Icon(LucideIcons.chevronLeft, size: 16, color: branding.primaryColor),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'المتاح: $quotaBalance طالب • المسجلين: $totalStudents طالب',
+                                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[700]),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },

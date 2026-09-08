@@ -19,6 +19,7 @@ import '../auth/auth_screen.dart';
 import '../books/books_inventory_screen.dart';
 import '../cashier/financial_ledger_screen.dart';
 import '../cashier/mobile_pos_screen.dart';
+import '../quota/quota_topup_screen.dart';
 import '../dashboard/admin_dashboard_screen.dart';
 import '../dashboard/assistant_dashboard_screen.dart';
 import '../dashboard/teacher_dashboard_screen.dart';
@@ -454,6 +455,25 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
             // Section 3: Admin & Finance
             _buildDrawerSectionTitle('الإدارة والمنصة (Admin)'),
+            ListTile(
+              leading: const Icon(LucideIcons.gauge, color: Color(0xFF10B981)),
+              title: Text('الرصيد وشحن باقات الطلاب', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'شحن رصيد',
+                  style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.bold),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const QuotaTopupScreen()));
+              },
+            ),
             ListTile(
               leading: const Icon(LucideIcons.video),
               title: Text('إدارة المنصة والكورسات والحصص', style: GoogleFonts.cairo(fontSize: 13)),

@@ -219,21 +219,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String phone,
     required String email,
     required String password,
-    required String subdomain,
+    String? subdomain,
+    List<String>? stages,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final cleanSubdomain = subdomain.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), '');
-      if (cleanSubdomain.isEmpty) {
-        state = state.copyWith(isLoading: false, errorMessage: 'يرجى إدخال اسم نطاق فرعي صحيح (أحرف إنجليزية وأرقام)');
-        return false;
-      }
+      final cleanSubdomain = subdomain != null && subdomain.trim().isNotEmpty
+          ? subdomain.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), '')
+          : null;
 
       // Step 1: Create Tenant on backend
       final tenantRes = await ApiClient().dio.post('/tenants', data: {
         'name': centerName.trim(),
         'type': orgType.contains('مدرس') ? 'TEACHER' : 'CENTER',
-        'subdomain': cleanSubdomain,
+        if (cleanSubdomain != null && cleanSubdomain.isNotEmpty) 'subdomain': cleanSubdomain,
+        if (stages != null && stages.isNotEmpty) 'stages': stages,
       });
 
       final tenantData = tenantRes.data;
@@ -248,6 +248,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'tenantId': tenantId,
       });
 
+      // Step 2.5: Auto sync stages if provided
+      if (stages != null && stages.isNotEmpty) {
+        try {
+          await ApiClient().dio.post('/academic/sync-stages', data: {
+            'stages': stages,
+          });
+        } catch (_) {}
+      }
+
       // Step 3: Login with newly created credentials
       return await login(phone.trim(), password.trim());
     } catch (e) {
@@ -259,7 +268,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           final m = resData['message'];
           errorMsg = m is List ? m.join(', ') : m.toString();
         } else if (e.response?.statusCode == 409) {
-          errorMsg = 'النطاق الفرعي أو رقم الهاتف مسجل بالفعل';
+          errorMsg = 'السنتر أو رقم الهاتف مسجل بالفعل';
         }
       }
       state = state.copyWith(isLoading: false, errorMessage: errorMsg);

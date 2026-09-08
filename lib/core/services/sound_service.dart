@@ -8,6 +8,7 @@ class SoundService {
 
   static void warningFeedback() {
     HapticFeedback.mediumImpact();
+    SystemSound.play(SystemSoundType.alert);
   }
 
   static void lightImpact() {
@@ -17,5 +18,6 @@ class SoundService {
   static void errorFeedback() {
     HapticFeedback.heavyImpact();
     HapticFeedback.vibrate();
+    SystemSound.play(SystemSoundType.alert);
   }
 }

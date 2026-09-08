@@ -33,8 +33,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _regOwnerNameCtrl = TextEditingController();
   final _regEmailCtrl = TextEditingController();
   final _regPassCtrl = TextEditingController();
-  final _regSubdomainCtrl = TextEditingController();
-  String _selectedStage = 'المرحلة الثانوية';
+  final Set<String> _selectedStages = {'SECONDARY', 'BACCALAUREATE'};
   Color _selectedPrimaryColor = const Color(0xFF0143A3);
   bool _regPassObscure = true;
 
@@ -55,7 +54,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _regOwnerNameCtrl.dispose();
     _regEmailCtrl.dispose();
     _regPassCtrl.dispose();
-    _regSubdomainCtrl.dispose();
     super.dispose();
   }
 
@@ -708,45 +706,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  // Step 3: Subdomain & Branding
+  // Step 3: Stages & Branding
   Widget _buildStep3BrandingAndDomain(dynamic branding) {
     return Column(
       key: const ValueKey(2),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('النطاق السحابي والهوية', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text('المراحل الدراسية وهويتك التجارية', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 6),
+        Text('حدد كافة المراحل التي يعمل بها السنتر (يمكن اختيار أكثر من مسار):', style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[600])),
         const SizedBox(height: 12),
 
-        // Subdomain Input
-        TextField(
-          controller: _regSubdomainCtrl,
-          decoration: const InputDecoration(
-            labelText: 'النطاق الفرعي المطلوب',
-            hintText: 'مثال: alnoor',
-            suffixText: '.eduzorar.com',
-            prefixIcon: Icon(LucideIcons.globe, size: 18),
-            isDense: true,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Stage Dropdown
-        DropdownButtonFormField<String>(
-          value: _selectedStage,
-          decoration: const InputDecoration(
-            labelText: 'المرحلة الدراسية الأساسية',
-            prefixIcon: Icon(LucideIcons.bookOpen, size: 18),
-            isDense: true,
-          ),
-          items: const [
-            DropdownMenuItem(value: 'المرحلة الثانوية', child: Text('المرحلة الثانوية')),
-            DropdownMenuItem(value: 'المرحلة الإعدادية', child: Text('المرحلة الإعدادية')),
-            DropdownMenuItem(value: 'المرحلة الابتدائية', child: Text('المرحلة الابتدائية')),
-            DropdownMenuItem(value: 'شامل لكافة المراحل', child: Text('شامل لكافة المراحل')),
+        // Multi-select Stages Chips
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildStageChip('SECONDARY', 'المرحلة الثانوية العامة', branding),
+            _buildStageChip('BACCALAUREATE', 'شهادة البكالوريا', branding),
+            _buildStageChip('PREPARATORY', 'المرحلة الإعدادية', branding),
+            _buildStageChip('PRIMARY', 'المرحلة الابتدائية', branding),
           ],
-          onChanged: (val) => setState(() => _selectedStage = val ?? 'المرحلة الثانوية'),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
 
         // Color Picker
         Text('اللون الرئيسي لعلامتك التجارية:', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[700])),
@@ -784,6 +766,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
+  Widget _buildStageChip(String stageCode, String title, dynamic branding) {
+    final isSelected = _selectedStages.contains(stageCode);
+    return FilterChip(
+      selected: isSelected,
+      label: Text(
+        title,
+        style: GoogleFonts.cairo(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : null,
+        ),
+      ),
+      backgroundColor: Colors.grey.withOpacity(0.1),
+      selectedColor: branding.primaryColor,
+      checkmarkColor: Colors.white,
+      onSelected: (selected) {
+        SoundService.lightImpact();
+        setState(() {
+          if (selected) {
+            _selectedStages.add(stageCode);
+          } else {
+            if (_selectedStages.length > 1) {
+              _selectedStages.remove(stageCode);
+            }
+          }
+        });
+      },
+    );
+  }
+
   Future<void> _handleStepNext() async {
     SoundService.lightImpact();
     if (_currentRegStep == 0) {
@@ -808,9 +820,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     } else {
       // Step 2 Finished -> Submit Registration
       SoundService.successFeedback();
-      final sub = _regSubdomainCtrl.text.trim().isNotEmpty
-          ? _regSubdomainCtrl.text.trim()
-          : 'el-awael';
 
       // Update local branding color with chosen color
       ref.read(brandingProvider.notifier).updatePrimaryColor(_selectedPrimaryColor);
@@ -823,7 +832,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             phone: _regPhoneCtrl.text,
             email: _regEmailCtrl.text,
             password: _regPassCtrl.text,
-            subdomain: sub,
+            stages: _selectedStages.toList(),
           );
 
       if (success && mounted) {

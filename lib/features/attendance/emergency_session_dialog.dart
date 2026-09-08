@@ -2,30 +2,108 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:intl/intl.dart';
+import '../../core/network/api_client.dart';
+import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
+import 'attendance_scanner_screen.dart';
 
 class EmergencySessionDialog extends ConsumerStatefulWidget {
-  const EmergencySessionDialog({super.key});
+  final String? initialGroupId;
+  const EmergencySessionDialog({super.key, this.initialGroupId});
 
   @override
   ConsumerState<EmergencySessionDialog> createState() => _EmergencySessionDialogState();
 }
 
 class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog> {
-  String selectedGroup = 'مجموعة 3ث لغة عربية (أ) - أ/ أحمد كمال';
-  int sessionNumber = 5;
-  final TextEditingController reasonCtrl = TextEditingController(text: 'جلسة تعويضية لطلاب متغيبين');
+  String? _selectedGroupId;
+  int _sessionNumber = 1;
+  DateTime _selectedDate = DateTime.now();
+  final TextEditingController _reasonCtrl = TextEditingController(text: 'جلسة تعويضية / مراجعة إضافية');
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedGroupId = widget.initialGroupId;
+  }
 
   @override
   void dispose() {
-    reasonCtrl.dispose();
+    _reasonCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitEmergencySession(dynamic branding) async {
+    if (_selectedGroupId == null || _selectedGroupId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('يرجى اختيار المجموعة المستهدفة أولاً', style: GoogleFonts.cairo()), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    SoundService.lightImpact();
+
+    try {
+      await ApiClient().dio.post(
+        '/academic/groups/$_selectedGroupId/emergency-session',
+        data: {
+          'sessionNumber': _sessionNumber,
+          'title': 'جلسة استثنائية (حصة $_sessionNumber)',
+          'reason': _reasonCtrl.text.trim(),
+          'date': _selectedDate.toIso8601String(),
+        },
+      );
+
+      SoundService.successFeedback();
+      ref.invalidate(liveGroupsProvider);
+      ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
+
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF10B981),
+            content: Text(
+              'تم فتح الجلسة الاستثنائية للحصة ($_sessionNumber) بنجاح وجاهزة لتسجيل الحضور',
+              style: GoogleFonts.cairo(),
+            ),
+            action: SnackBarAction(
+              label: 'فتح السكانر',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (c) => AttendanceScannerScreen(preselectedGroupId: _selectedGroupId),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      SoundService.errorFeedback();
+      setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذر فتح الجلسة: $e', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final groupsAsync = ref.watch(liveGroupsProvider);
 
     return AlertDialog(
       title: Row(
@@ -56,33 +134,42 @@ class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog>
               ),
             ),
             const SizedBox(height: 16),
+
             Text(
               'المجموعة المستهدفة:',
               style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              value: selectedGroup,
-              isExpanded: true,
-              decoration: const InputDecoration(isDense: true),
-              items: const [
-                DropdownMenuItem(
-                  value: 'مجموعة 3ث لغة عربية (أ) - أ/ أحمد كمال',
-                  child: Text('مجموعة 3ث لغة عربية (أ) - أ/ أحمد كمال'),
-                ),
-                DropdownMenuItem(
-                  value: 'مجموعة 2ث كيمياء (ب) - أ/ حسام فؤاد',
-                  child: Text('مجموعة 2ث كيمياء (ب) - أ/ حسام فؤاد'),
-                ),
-                DropdownMenuItem(
-                  value: 'مجموعة 1ث فيزياء (ج) - أ/ محمد إبراهيم',
-                  child: Text('مجموعة 1ث فيزياء (ج) - أ/ محمد إبراهيم'),
-                ),
-              ],
-              onChanged: (val) {
-                if (val != null) setState(() => selectedGroup = val);
+            groupsAsync.when(
+              data: (groups) {
+                if (groups.isEmpty) {
+                  return const Text('لا توجد مجموعات متاحة، يرجى إنشاء مجموعة أولاً');
+                }
+                _selectedGroupId ??= groups.first['id']?.toString();
+
+                return DropdownButtonFormField<String>(
+                  value: _selectedGroupId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(isDense: true),
+                  items: groups.map((g) {
+                    final id = g['id']?.toString() ?? '';
+                    final name = g['name']?.toString() ?? 'مجموعة';
+                    final teacher = g['teacher']?['name']?.toString() ?? '';
+                    final label = teacher.isNotEmpty ? '$name ($teacher)' : name;
+                    return DropdownMenuItem<String>(
+                      value: id,
+                      child: Text(label, style: GoogleFonts.cairo(fontSize: 13), overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedGroupId = val);
+                  },
+                );
               },
+              loading: () => const LinearProgressIndicator(),
+              error: (err, _) => Text('تعذر جلب المجموعات: $err', style: GoogleFonts.cairo(color: Colors.red)),
             ),
+
             const SizedBox(height: 14),
             Row(
               children: [
@@ -91,23 +178,69 @@ class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'رقم الحصة في الشهر:',
+                        'رقم الحصة:',
                         style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<int>(
-                        value: sessionNumber,
+                        value: _sessionNumber,
                         decoration: const InputDecoration(isDense: true),
-                        items: const [
-                          DropdownMenuItem(value: 1, child: Text('الحصة 1')),
-                          DropdownMenuItem(value: 2, child: Text('الحصة 2')),
-                          DropdownMenuItem(value: 3, child: Text('الحصة 3')),
-                          DropdownMenuItem(value: 4, child: Text('الحصة 4')),
-                          DropdownMenuItem(value: 5, child: Text('الحصة 5 (إضافية)')),
-                        ],
+                        items: List.generate(8, (index) {
+                          final num = index + 1;
+                          final isExtra = num > 4;
+                          return DropdownMenuItem<int>(
+                            value: num,
+                            child: Text(isExtra ? 'الحصة $num (إضافية)' : 'الحصة $num', style: GoogleFonts.cairo(fontSize: 12)),
+                          );
+                        }),
                         onChanged: (val) {
-                          if (val != null) setState(() => sessionNumber = val);
+                          if (val != null) setState(() => _sessionNumber = val);
                         },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'تاريخ الانعقاد:',
+                        style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                            lastDate: DateTime.now().add(const Duration(days: 30)),
+                          );
+                          if (picked != null) {
+                            setState(() => _selectedDate = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.withOpacity(0.4)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(LucideIcons.calendar, size: 16, color: Colors.grey),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  DateFormat('yyyy-MM-dd').format(_selectedDate),
+                                  style: GoogleFonts.cairo(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -116,12 +249,12 @@ class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog>
             ),
             const SizedBox(height: 14),
             Text(
-              'سبب فتح الاستثناء:',
+              'سبب فتح الاستثناء أو الملاحظة:',
               style: GoogleFonts.cairo(fontSize: 12.5, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             TextField(
-              controller: reasonCtrl,
+              controller: _reasonCtrl,
               decoration: const InputDecoration(
                 hintText: 'مثال: حصة تعويضية أو مراجعة إضافية...',
                 isDense: true,
@@ -132,7 +265,7 @@ class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog>
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
           child: const Text('إلغاء'),
         ),
         ElevatedButton.icon(
@@ -140,21 +273,11 @@ class _EmergencySessionDialogState extends ConsumerState<EmergencySessionDialog>
             backgroundColor: branding.primaryColor,
             foregroundColor: Colors.white,
           ),
-          icon: const Icon(LucideIcons.unlock, size: 16),
-          label: const Text('فتح جلسة الحضور الآن'),
-          onPressed: () {
-            SoundService.successFeedback();
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                backgroundColor: const Color(0xFF10B981),
-                content: Text(
-                  'تم فتح الجلسة الاستثنائية للحصة ($sessionNumber) بنجاح وجاهزة للمسح',
-                  style: GoogleFonts.cairo(),
-                ),
-              ),
-            );
-          },
+          icon: _isSubmitting
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Icon(LucideIcons.unlock, size: 16),
+          label: Text(_isSubmitting ? 'جاري الفتح...' : 'تأكيد وفتح الجلسة'),
+          onPressed: _isSubmitting ? null : () => _submitEmergencySession(branding),
         ),
       ],
     );
