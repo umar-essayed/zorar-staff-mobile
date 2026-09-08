@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.zorar.app.staff_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
