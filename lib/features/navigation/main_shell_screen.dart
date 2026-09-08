@@ -30,6 +30,7 @@ import '../platform/platform_settings_screen.dart';
 import '../settings/branding_settings_screen.dart';
 import '../staff/staff_management_screen.dart';
 import '../students/students_list_screen.dart';
+import '../teachers/teachers_management_screen.dart';
 import '../teacher/live_class_cockpit_screen.dart';
 import '../teacher/teacher_earnings_screen.dart';
 import '../teacher/teacher_settlements_screen.dart';
@@ -506,6 +507,14 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const FinancialLedgerScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.graduationCap, color: Color(0xFF0EA5E9)),
+              title: Text('إدارة المدرسين والمعلمين', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const TeachersManagementScreen()));
               },
             ),
             ListTile(

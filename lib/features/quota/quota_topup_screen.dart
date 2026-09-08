@@ -373,7 +373,6 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
                         ),
                       ),
 
-                      const SizedBox(height: 16),
                       // Transfer Account Banner
                       Builder(
                         builder: (ctx) {
@@ -381,90 +380,68 @@ class _QuotaTopupScreenState extends ConsumerState<QuotaTopupScreen> with Single
                           final transferPhone = transferAccount['phone']?.toString() ?? '01553442304';
 
                           return Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF1E293B),
-                                  Color(0xFF0F172A),
-                                ],
-                                begin: Alignment.topRight,
-                                end: Alignment.bottomLeft,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: branding.primaryColor.withOpacity(0.4)),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4)),
-                              ],
+                              color: branding.primaryColor.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: branding.primaryColor.withOpacity(0.35)),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: branding.primaryColor.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(LucideIcons.send, color: branding.primaryColor, size: 20),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'بيانات تحويل الرصيد الفوري المعتمدة',
-                                            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
-                                          ),
-                                          Text(
-                                            'فودافون كاش (Vodafone Cash) • إنستاباي (InstaPay)',
-                                            style: GoogleFonts.cairo(color: Colors.white.withOpacity(0.8), fontSize: 11),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: branding.primaryColor.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(LucideIcons.send, color: branding.primaryColor, size: 20),
                                 ),
-                                const Divider(color: Colors.white24, height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('رقم السداد والتحويل المعتمد:', style: GoogleFonts.cairo(color: Colors.white70, fontSize: 11.5)),
-                                        const SizedBox(height: 2),
-                                        SelectableText(
-                                          transferPhone,
-                                          style: GoogleFonts.firaCode(color: const Color(0xFF34D399), fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'تحويل فودافون كاش أو إنستاباي:',
+                                        style: GoogleFonts.cairo(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
                                         ),
-                                      ],
-                                    ),
-                                    ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: branding.primaryColor,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                       ),
-                                      icon: const Icon(LucideIcons.copy, size: 16),
-                                      label: Text('نسخ الرقم', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
-                                      onPressed: () {
-                                        Clipboard.setData(ClipboardData(text: transferPhone));
-                                        SoundService.successFeedback();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('تم نسخ رقم التحويل ($transferPhone) بنجاح ✅', style: GoogleFonts.cairo()),
-                                            backgroundColor: const Color(0xFF10B981),
-                                            duration: const Duration(seconds: 2),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                      const SizedBox(height: 2),
+                                      SelectableText(
+                                        transferPhone,
+                                        style: GoogleFonts.firaCode(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold,
+                                          color: branding.primaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: branding.primaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    elevation: 0,
+                                  ),
+                                  icon: const Icon(LucideIcons.copy, size: 15),
+                                  label: Text('نسخ', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(text: transferPhone));
+                                    SoundService.successFeedback();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('تم نسخ رقم التحويل: $transferPhone', style: GoogleFonts.cairo()),
+                                        backgroundColor: branding.primaryColor,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

@@ -120,15 +120,15 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen>
   }
 
   Widget _buildOverviewTab(Color primary) {
-    final summary = _analyticsData?['summary'] as Map<String, dynamic>? ?? {};
+    final summary = (_analyticsData?['overview'] ?? _analyticsData?['summary']) as Map<String, dynamic>? ?? {};
     final totalCourses = summary['totalCourses'] ?? 0;
     final totalLessons = summary['totalLessons'] ?? 0;
     final totalQuizzes = summary['totalQuizzes'] ?? 0;
     final totalEnrollments = summary['totalEnrollments'] ?? 0;
-    final uniqueStudents = summary['uniqueStudents'] ?? 0;
-    final activeWatchers = summary['activeWatchers'] ?? 0;
+    final uniqueStudents = summary['totalRegisteredStudents'] ?? summary['uniqueStudents'] ?? 0;
+    final activeWatchers = summary['activeWatchersCount'] ?? summary['activeWatchers'] ?? 0;
     final totalWatchHours = summary['totalWatchHours'] ?? 0;
-    final quizPassRate = (summary['quizPassRate'] ?? 0).toDouble();
+    final quizPassRate = (summary['overallPassRate'] ?? summary['quizPassRate'] ?? 0).toDouble();
 
     return RefreshIndicator(
       onRefresh: _loadAnalytics,
@@ -344,7 +344,7 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen>
   }
 
   Widget _buildCoursesTab(Color primary) {
-    final courses = (_analyticsData?['coursesAnalytics'] as List<dynamic>?) ?? [];
+    final courses = ((_analyticsData?['courses'] ?? _analyticsData?['coursesAnalytics']) as List<dynamic>?) ?? [];
 
     if (courses.isEmpty) {
       return const Center(
@@ -368,11 +368,11 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen>
         itemBuilder: (context, index) {
           final c = courses[index] as Map<String, dynamic>;
           final title = c['title'] ?? 'بدون عنوان';
-          final level = c['level'] ?? '';
-          final totalEnrollments = c['totalEnrollments'] ?? 0;
-          final activeStudents = c['activeStudents'] ?? 0;
+          final level = c['academicYearName'] ?? c['level'] ?? '';
+          final totalEnrollments = c['enrolledCount'] ?? c['totalEnrollments'] ?? 0;
+          final activeStudents = c['activeStudentsCount'] ?? c['activeStudents'] ?? 0;
           final completionRate = (c['completionRate'] ?? 0).toDouble();
-          final lessonsCount = c['lessonsCount'] ?? 0;
+          final lessonsCount = c['totalLessons'] ?? c['lessonsCount'] ?? 0;
           final quizSubmissionsCount = c['quizSubmissionsCount'] ?? 0;
 
           return Card(
@@ -476,7 +476,7 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen>
   }
 
   Widget _buildQuizzesTab(Color primary) {
-    final quizzes = (_analyticsData?['quizzesAnalytics'] as List<dynamic>?) ?? [];
+    final quizzes = ((_analyticsData?['quizzes'] ?? _analyticsData?['quizzesAnalytics']) as List<dynamic>?) ?? [];
 
     if (quizzes.isEmpty) {
       return const Center(
@@ -500,8 +500,8 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen>
         itemBuilder: (context, index) {
           final q = quizzes[index] as Map<String, dynamic>;
           final title = q['title'] ?? 'كويز بدون عنوان';
-          final totalSubmissions = q['totalSubmissions'] ?? 0;
-          final avgScore = (q['avgScore'] ?? 0).toDouble();
+          final totalSubmissions = q['submissionsCount'] ?? q['totalSubmissions'] ?? 0;
+          final avgScore = (q['averageScore'] ?? q['avgScore'] ?? 0).toDouble();
           final passRate = (q['passRate'] ?? 0).toDouble();
           final highestScore = q['highestScore'] ?? 0;
           final lowestScore = q['lowestScore'] ?? 0;

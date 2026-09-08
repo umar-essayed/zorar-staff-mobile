@@ -147,7 +147,8 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
         _feedbackColor = isLate ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
       });
 
-      // Refresh group attendance list
+      // Refresh group and session attendance list
+      ref.invalidate(liveSessionAttendanceProvider((groupId: _selectedGroupId!, sessionId: _selectedSessionId)));
       ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
     } catch (e) {
       String errMsg = 'فشل التسجيل: تعذر الاتصال بالخادم';
@@ -421,6 +422,9 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
                         }).toList(),
                         onChanged: (val) {
                           setState(() => _selectedSessionId = val);
+                          if (_selectedGroupId != null) {
+                            ref.invalidate(liveSessionAttendanceProvider((groupId: _selectedGroupId!, sessionId: val)));
+                          }
                         },
                       ),
                   ],
@@ -579,11 +583,27 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
 
             const SizedBox(height: 18),
 
-            // STEP 3: Live Group Attendance List Below Scanner
+            // STEP 3: Live Group & Session Attendance List Below Scanner
             if (_selectedGroupId != null)
               Consumer(
                 builder: (context, ref, _) {
-                  final attAsync = ref.watch(liveGroupAttendanceProvider(_selectedGroupId!));
+                  final attAsync = ref.watch(
+                    liveSessionAttendanceProvider(
+                      (groupId: _selectedGroupId!, sessionId: _selectedSessionId),
+                    ),
+                  );
+
+                  String headerTitle = 'كشف حضور المجموعة';
+                  if (_selectedSessionId != null && _groupSessions.isNotEmpty) {
+                    final matchedSession = _groupSessions.firstWhere(
+                      (s) => s['id']?.toString() == _selectedSessionId,
+                      orElse: () => {},
+                    );
+                    if (matchedSession.isNotEmpty) {
+                      final num = matchedSession['sessionNumber'] ?? 1;
+                      headerTitle = 'كشف حضور حصة $num';
+                    }
+                  }
 
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -593,15 +613,30 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'كشف حضور المجموعة الحالي',
-                              style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  headerTitle,
+                                  style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  _selectedSessionId != null
+                                      ? 'مخصص للحضور الفعلي لهذه الجلسة فقط'
+                                      : 'عرض حضور اليوم للمجموعة',
+                                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                                ),
+                              ],
                             ),
                             IconButton(
                               icon: const Icon(LucideIcons.refreshCw, size: 16),
                               tooltip: 'تحديث الكشف',
                               onPressed: () {
-                                ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
+                                ref.invalidate(
+                                  liveSessionAttendanceProvider(
+                                    (groupId: _selectedGroupId!, sessionId: _selectedSessionId),
+                                  ),
+                                );
                               },
                             ),
                           ],

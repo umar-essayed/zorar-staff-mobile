@@ -25,17 +25,39 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
   String _selectedYearFilter = 'الكل';
 
   Future<void> _showGrantCourseDialog(BuildContext context, String courseId, String courseTitle) async {
-    final groupsAsync = ref.read(liveGroupsProvider);
-    final groups = groupsAsync.value ?? [];
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    List<Map<String, dynamic>> groups = [];
+    try {
+      groups = await EduApiService().getGroups();
+    } catch (e) {
+      debugPrint('Error fetching groups: $e');
+    }
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (groups.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('لا توجد مجموعات محلية مسجلة بالسنتر حالياً. يرجى إضافة مجموعة من صفحة المجموعات أولاً.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
     final selectedGroupIds = <String>{};
     bool isSubmitting = false;
 
-    if (groups.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا توجد مجموعات محلية مسجلة بالسنتر لإتاحة الكورس لها')),
-      );
-      return;
-    }
+    if (!context.mounted) return;
 
     await showDialog(
       context: context,

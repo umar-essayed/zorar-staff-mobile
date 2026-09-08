@@ -242,6 +242,55 @@ class EduApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> getTeacher(String id) async {
+    try {
+      final res = await _dio.get('/teachers/$id');
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error getTeacher: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateTeacher(String id, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/teachers/$id', data: data);
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error updateTeacher: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteTeacher(String id) async {
+    try {
+      await _dio.delete('/teachers/$id');
+    } catch (e) {
+      debugPrint('Error deleteTeacher: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> resetTeacherPassword(String id, String password) async {
+    try {
+      final res = await _dio.post('/teachers/$id/reset-password', data: {'password': password});
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error resetTeacherPassword: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createTeacherPayout(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/teachers/payouts', data: data);
+      return res.data as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error createTeacherPayout: $e');
+      rethrow;
+    }
+  }
+
   // ==========================================
   // 4. Attendance & Scanning APIs
   // ==========================================
@@ -258,17 +307,19 @@ class EduApiService {
         if (sessionId != null) 'sessionId': sessionId,
         'forceGrace': forceGrace,
       });
-      return Map<String, dynamic>.from(res.data);
+      return res.data as Map<String, dynamic>;
     } catch (e) {
       debugPrint('Error scanAttendance: $e');
       rethrow;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getGroupAttendance(String groupId, {String? date}) async {
+  Future<List<Map<String, dynamic>>> getGroupAttendance(String groupId, {String? date, String? sessionId}) async {
     try {
-      final q = date != null ? '?date=$date' : '';
-      final res = await _dio.get('/attendance/group/$groupId$q');
+      final params = <String, dynamic>{};
+      if (date != null) params['date'] = date;
+      if (sessionId != null && sessionId.isNotEmpty) params['sessionId'] = sessionId;
+      final res = await _dio.get('/attendance/group/$groupId', queryParameters: params);
       if (res.data is List) {
         return List<Map<String, dynamic>>.from(res.data);
       }

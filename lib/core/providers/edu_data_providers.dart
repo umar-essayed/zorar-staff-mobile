@@ -41,10 +41,20 @@ final liveBooksProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>
   return await EduApiService().getBooks();
 });
 
-// 8. Group Attendance Live Provider
+// 8. Group & Session Attendance Live Provider
 final liveGroupAttendanceProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, groupId) async {
   if (groupId.isEmpty) return [];
   return await EduApiService().getGroupAttendance(groupId);
+});
+
+final liveSessionAttendanceProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, ({String groupId, String? sessionId})>((ref, arg) async {
+  if (arg.groupId.isEmpty) return [];
+  return await EduApiService().getGroupAttendance(arg.groupId, sessionId: arg.sessionId);
+});
+
+// Teachers Live Provider
+final liveTeachersProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return await EduApiService().getTeachers();
 });
 
 // 9. Finance Overview & Analytics Provider
