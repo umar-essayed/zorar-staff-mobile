@@ -90,7 +90,7 @@ class _ExamDetailsScreenState extends ConsumerState<ExamDetailsScreen> with Sing
     if (confirm == true && mounted) {
       final success = await EduApiService().deleteExam(widget.examId);
       if (success) {
-        SoundService().playSuccess();
+        SoundService.successFeedback();
         ref.invalidate(liveExamsProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +99,7 @@ class _ExamDetailsScreenState extends ConsumerState<ExamDetailsScreen> with Sing
           Navigator.pop(context, true);
         }
       } else {
-        SoundService().playError();
+        SoundService.errorFeedback();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('فشل حذف الامتحان', style: GoogleFonts.cairo()), backgroundColor: Colors.red),
@@ -117,7 +117,7 @@ class _ExamDetailsScreenState extends ConsumerState<ExamDetailsScreen> with Sing
       if (updated != null && mounted) {
         setState(() => _exam = updated);
         ref.invalidate(liveExamsProvider);
-        SoundService().playSuccess();
+        SoundService.successFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -129,7 +129,7 @@ class _ExamDetailsScreenState extends ConsumerState<ExamDetailsScreen> with Sing
         );
       }
     } catch (e) {
-      SoundService().playError();
+      SoundService.errorFeedback();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('فشل تغيير الحالة: $e', style: GoogleFonts.cairo()), backgroundColor: Colors.red),

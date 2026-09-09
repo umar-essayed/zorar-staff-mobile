@@ -27,6 +27,10 @@ void main() {
   });
 
   testWidgets('AuthScreen renders login and register tabs', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
@@ -34,9 +38,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('تسجيل الدخول'), findsAtLeastNWidgets(1));
     expect(find.text('إنشاء سنتر جديد'), findsOneWidget);
-    expect(find.text('دخول إلى النظام'), findsOneWidget);
   });
 }

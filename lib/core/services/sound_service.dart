@@ -20,4 +20,10 @@ class SoundService {
     HapticFeedback.vibrate();
     SystemSound.play(SystemSoundType.alert);
   }
+
+  // Compatibility methods for instance and play* calls
+  void playSuccess() => successFeedback();
+  void playError() => errorFeedback();
+  void playWarning() => warningFeedback();
+  void playClick() => lightImpact();
 }

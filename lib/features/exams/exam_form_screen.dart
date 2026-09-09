@@ -172,7 +172,7 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
 
   Future<void> _saveExam() async {
     if (!_formKey.currentState!.validate()) {
-      SoundService().playError();
+      SoundService.errorFeedback();
       return;
     }
 
@@ -180,7 +180,7 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
     for (int i = 0; i < _questions.length; i++) {
       final q = _questions[i];
       if ((q['text'] as String).trim().isEmpty) {
-        SoundService().playError();
+        SoundService.errorFeedback();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('يرجى كتابة نص السؤال رقم ${i + 1}', style: GoogleFonts.cairo()),
@@ -228,7 +228,7 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
         await EduApiService().createExam(data);
       }
 
-      SoundService().playSuccess();
+      SoundService.successFeedback();
       ref.invalidate(liveExamsProvider);
 
       if (mounted) {
@@ -244,7 +244,7 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      SoundService().playError();
+      SoundService.errorFeedback();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
