@@ -53,13 +53,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     final prefs = await SharedPreferences.getInstance();
     final hasSeenOnboarding = prefs.getBool('zorar_has_seen_onboarding') ?? false;
 
-    // Wait at least 1000ms for smooth splash animation
+    // Wait at least 1200ms for smooth splash animation
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    if (elapsed < 1000) {
-      await Future.delayed(Duration(milliseconds: 1000 - elapsed));
+    if (elapsed < 1200) {
+      await Future.delayed(Duration(milliseconds: 1200 - elapsed));
     }
 
     if (!mounted) return;
+
+    // IMPORTANT: _loadStoredSession() in AuthNotifier is async. We must wait
+    // for it to finish before reading the auth state, otherwise we always see
+    // isAuthenticated=false and the user gets logged out on every app restart.
+    // Poll until auth loading is done (max 3 seconds extra).
+    int waitCount = 0;
+    while (waitCount < 30) {
+      final authState = ref.read(authProvider);
+      if (!authState.isLoading) break;
+      await Future.delayed(const Duration(milliseconds: 100));
+      waitCount++;
+      if (!mounted) return;
+    }
 
     final auth = ref.read(authProvider);
 

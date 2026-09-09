@@ -29,6 +29,9 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
 
   final _customAmountCtrl = TextEditingController(text: '350');
   final _customNotesCtrl = TextEditingController();
+  String? _selectedAcademicYearId;
+  String? _selectedAcademicYearName;
+  final _studentSearchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -39,6 +42,7 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
   void dispose() {
     _customAmountCtrl.dispose();
     _customNotesCtrl.dispose();
+    _studentSearchCtrl.dispose();
     super.dispose();
   }
 
@@ -47,9 +51,16 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
     final branding = ref.watch(brandingProvider);
     final studentsAsync = ref.watch(liveStudentsProvider);
     final booksAsync = ref.watch(liveBooksProvider);
+    final yearsAsync = ref.watch(liveAcademicYearsProvider);
     final netTotal = (amount - discount).clamp(0.0, 999999.0);
 
-    final studentsList = studentsAsync.value ?? [];
+    final allStudents = studentsAsync.value ?? [];
+    final studentsList = _selectedAcademicYearId == null
+        ? allStudents
+        : allStudents.where((s) =>
+            s['academicYearId']?.toString() == _selectedAcademicYearId ||
+            (s['academicYear']?['id']?.toString() == _selectedAcademicYearId)
+          ).toList();
     if (selectedStudentObj == null && studentsList.isNotEmpty) {
       if (widget.initialStudentCode != null && widget.initialStudentCode!.isNotEmpty) {
         selectedStudentObj = studentsList.firstWhere(
@@ -86,6 +97,42 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Academic Year Filter
+            if (yearsAsync.hasValue && (yearsAsync.value?.isNotEmpty ?? false)) ...[
+              DropdownButtonFormField<String>(
+                value: _selectedAcademicYearId,
+                decoration: const InputDecoration(
+                  labelText: 'السنة الدراسية',
+                  prefixIcon: Icon(LucideIcons.calendarDays, size: 18),
+                  isDense: true,
+                ),
+                hint: Text('اختر السنة الدراسية', style: GoogleFonts.cairo(fontSize: 13)),
+                items: [
+                  DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('كل السنوات', style: GoogleFonts.cairo(fontSize: 13)),
+                  ),
+                  ...yearsAsync.value!.map((y) => DropdownMenuItem<String>(
+                    value: y['id']?.toString(),
+                    child: Text(y['name']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 13)),
+                  )),
+                ],
+                onChanged: (val) {
+                  setState(() {
+                    _selectedAcademicYearId = val;
+                    _selectedAcademicYearName = yearsAsync.value!.firstWhere(
+                      (y) => y['id']?.toString() == val,
+                      orElse: () => {},
+                    )['name']?.toString();
+                    // Reset student selection when year changes
+                    selectedStudentObj = null;
+                    selectedItem = 'دفع مخصص وملاحظات (مبلغ حر)';
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // Student Selector
             Text(
               'بيانات الطالب',
@@ -166,16 +213,31 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                   for (final g in groupsList) {
                     if (g is Map && g['group'] is Map) {
                       final gMap = g['group'] as Map;
+                      final gId = gMap['id']?.toString() ?? g['groupId']?.toString() ?? '';
                       final gName = gMap['name']?.toString() ?? 'المجموعة';
                       final sPrice = parseDouble(gMap['pricePerSession'], 50.0);
                       final mFee = parseDouble(gMap['monthlyFee'], 350.0);
-                      chargeOptions.add({
-                        'label': 'رسوم حصة مفردة [$gName] (${sPrice.toInt()} ج.م)',
-                        'amount': sPrice,
-                        'type': 'LESSON_SESSION_FEE',
-                        'isCustom': false,
-                      });
-                      if (monthlySubs.isEmpty) {
+
+                      // Check if this group has a paid monthly subscription this month
+                      final hasPaidMonthlyForGroup = monthlySubs.any((sub) =>
+                        sub is Map &&
+                        sub['isPaid'] == true &&
+                        (sub['groupId']?.toString() == gId ||
+                         sub['group']?['id']?.toString() == gId)
+                      );
+
+                      // Only add session fee option if student doesn't have a paid monthly sub for this group
+                      if (!hasPaidMonthlyForGroup) {
+                        chargeOptions.add({
+                          'label': 'رسوم حصة مفردة [$gName] (${sPrice.toInt()} ج.م)',
+                          'amount': sPrice,
+                          'type': 'LESSON_SESSION_FEE',
+                          'isCustom': false,
+                        });
+                      }
+
+                      // Add monthly sub option only if not already paid
+                      if (!hasPaidMonthlyForGroup) {
                         chargeOptions.add({
                           'label': 'اشتراك شهر جديد [$gName] (${mFee.toInt()} ج.م)',
                           'amount': mFee,
@@ -187,17 +249,57 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                   }
                 }
 
-                // 3. Available Books
+                // 3. Available Books (filtered by student's academic year + subjects/teachers)
                 final booksList = booksAsync.value ?? [];
+                // Gather student's teacher IDs and subject IDs from their groups
+                final studentTeacherIds = <String>{};
+                final studentSubjectIds = <String>{};
+                if (groupsList != null) {
+                  for (final g in groupsList) {
+                    if (g is Map && g['group'] is Map) {
+                      final gMap = g['group'] as Map;
+                      if (gMap['teacherId'] != null) studentTeacherIds.add(gMap['teacherId'].toString());
+                      if (gMap['subjectId'] != null) studentSubjectIds.add(gMap['subjectId'].toString());
+                    }
+                  }
+                }
                 for (final b in booksList) {
-                  final bTitle = b['title']?.toString() ?? 'كتاب';
-                  final bPrice = parseDouble(b['salePrice'], 85.0);
-                  chargeOptions.add({
-                    'label': 'شراء ملزمة: $bTitle (${bPrice.toInt()} ج.م)',
-                    'amount': bPrice,
-                    'type': 'BOOK_NOTE_PURCHASE',
-                    'isCustom': false,
-                  });
+                  // Filter: book must match student's academic year OR subject OR teacher
+                  final bookYearId = b['academicYearId']?.toString();
+                  final bookSubjectId = b['subjectId']?.toString();
+                  final bookTeacherId = b['teacherId']?.toString();
+                  final studentYearId = selectedStudentObj?['academicYearId']?.toString() ??
+                    selectedStudentObj?['academicYear']?['id']?.toString();
+
+                  bool matchesStudent = false;
+                  // If we have filtering info, apply it
+                  if (studentTeacherIds.isNotEmpty || studentSubjectIds.isNotEmpty || studentYearId != null) {
+                    if (bookYearId != null && studentYearId != null && bookYearId == studentYearId) {
+                      matchesStudent = true;
+                    } else if (bookSubjectId != null && studentSubjectIds.contains(bookSubjectId)) {
+                      matchesStudent = true;
+                    } else if (bookTeacherId != null && studentTeacherIds.contains(bookTeacherId)) {
+                      matchesStudent = true;
+                    }
+                    // If book has no filtering fields, show it to everyone
+                    if (bookYearId == null && bookSubjectId == null && bookTeacherId == null) {
+                      matchesStudent = true;
+                    }
+                  } else {
+                    // No student selected or no group data — show all books
+                    matchesStudent = true;
+                  }
+
+                  if (matchesStudent) {
+                    final bTitle = b['title']?.toString() ?? 'كتاب';
+                    final bPrice = parseDouble(b['salePrice'], 85.0);
+                    chargeOptions.add({
+                      'label': 'شراء ملزمة: $bTitle (${bPrice.toInt()} ج.م)',
+                      'amount': bPrice,
+                      'type': 'BOOK_NOTE_PURCHASE',
+                      'isCustom': false,
+                    });
+                  }
                 }
 
                 // 4. Custom Payment (Always available)

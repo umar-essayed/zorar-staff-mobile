@@ -116,7 +116,8 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref? ref;
 
-  AuthNotifier([this.ref]) : super(const AuthState()) {
+  // Start with isLoading=true so splash screen waits for session check
+  AuthNotifier([this.ref]) : super(const AuthState(isLoading: true)) {
     _loadStoredSession();
   }
 
@@ -133,6 +134,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           ref!.read(brandingProvider.notifier).updateFromTenant(user.tenant!);
         }
         state = state.copyWith(
+          isLoading: false,
           isAuthenticated: true,
           user: user,
         );
@@ -143,7 +145,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     // Unauthenticated state by default (no fake bypass)
-    state = const AuthState(isAuthenticated: false, user: null);
+    state = const AuthState(isLoading: false, isAuthenticated: false, user: null);
   }
 
   Future<bool> login(String phone, String password) async {

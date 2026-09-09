@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
 import '../auth/auth_provider.dart';
 
-class TeacherEarningsScreen extends ConsumerWidget {
+class TeacherEarningsScreen extends ConsumerStatefulWidget {
   final String? teacherId;
   final String? teacherName;
 
@@ -18,40 +19,74 @@ class TeacherEarningsScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TeacherEarningsScreen> createState() => _TeacherEarningsScreenState();
+}
+
+class _TeacherEarningsScreenState extends ConsumerState<TeacherEarningsScreen> {
+  Map<String, dynamic>? _portalStats;
+  bool _isLoadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPortalStats();
+  }
+
+  Future<void> _loadPortalStats() async {
+    setState(() => _isLoadingStats = true);
+    try {
+      final user = ref.read(authProvider).user;
+      final resolvedTeacherId = widget.teacherId ?? user?.teacherId;
+      final res = await EduApiService().getTeacherPortalStats(
+        teacherId: resolvedTeacherId,
+      );
+      if (mounted) setState(() => _portalStats = res);
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingStats = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
     final user = ref.watch(authProvider).user;
     final txAsync = ref.watch(liveTransactionsProvider);
     final groupsAsync = ref.watch(liveGroupsProvider);
 
-    final currentTeacherName = teacherName ?? user?.name ?? 'المعلم';
+    final resolvedTeacherId = widget.teacherId ?? user?.teacherId;
+    final currentTeacherName = widget.teacherName ?? user?.name ?? 'المعلم';
+
     final txData = txAsync.value ?? {};
     final txList = (txData['transactions'] as List?) ?? [];
 
-    // Filter transactions for this teacher if specified
-    final filteredTxs = txList.where((tx) {
-      if (teacherId != null && teacherId!.isNotEmpty) {
-        final tId = tx['teacherId']?.toString() ?? tx['teacher']?['id']?.toString();
-        final gTeacherId = tx['group']?['teacherId']?.toString();
-        if (tId != null && tId.isNotEmpty) {
-          return tId == teacherId;
-        }
-        if (gTeacherId != null && gTeacherId.isNotEmpty) {
-          return gTeacherId == teacherId;
-        }
-      }
-      return true;
-    }).toList();
+    // Filter transactions for this teacher if teacherId is known
+    final filteredTxs = resolvedTeacherId != null && resolvedTeacherId.isNotEmpty
+        ? txList.where((tx) {
+            final tId = tx['teacherId']?.toString() ?? tx['teacher']?['id']?.toString();
+            final gTeacherId = tx['group']?['teacherId']?.toString();
+            if (tId != null && tId.isNotEmpty) return tId == resolvedTeacherId;
+            if (gTeacherId != null && gTeacherId.isNotEmpty) return gTeacherId == resolvedTeacherId;
+            return false;
+          }).toList()
+        : txList;
 
-    // Calculate total earnings from transactions
+    // Use walletBalance from portal stats (authoritative) — fallback to sum of filtered txs
+    final portalStats = (_portalStats?['stats'] as Map<String, dynamic>?) ?? {};
+    final walletBalance = parseDouble(
+      portalStats['walletBalance'] ?? portalStats['unsettledEarnings'] ?? portalStats['earnings'],
+    );
+    final totalRevenueCollected = parseDouble(portalStats['totalRevenueCollected']);
+    final totalPaidOut = parseDouble(portalStats['totalPaidOut']);
+
+    // Fallback if portal stats not loaded
     double totalCollected = 0.0;
     for (final tx in filteredTxs) {
       totalCollected += parseDouble(tx['amount']);
     }
+    final displayBalance = walletBalance > 0 ? walletBalance : totalCollected;
 
     final myGroups = (groupsAsync.value ?? []).where((g) {
-      if (teacherId != null && teacherId!.isNotEmpty) {
-        return g['teacherId']?.toString() == teacherId;
+      if (resolvedTeacherId != null && resolvedTeacherId.isNotEmpty) {
+        return g['teacherId']?.toString() == resolvedTeacherId;
       }
       return true;
     }).toList();
@@ -71,6 +106,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(LucideIcons.refreshCw, size: 20),
             onPressed: () {
+              _loadPortalStats();
               ref.invalidate(liveTransactionsProvider);
               ref.invalidate(liveGroupsProvider);
             },
@@ -86,57 +122,88 @@ class TeacherEarningsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                gradient: LinearGradient(
+                  colors: [branding.primaryColor.withOpacity(0.9), branding.primaryColor],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: branding.primaryColor.withOpacity(0.3)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'إجمالي التحصيلات المسجلة للشهر الجاري',
-                    style: GoogleFonts.cairo(color: Colors.white70, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${totalCollected.toStringAsFixed(0)} ج.م',
-                    style: GoogleFonts.cairo(
-                      color: branding.primaryColor,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
+              child: _isLoadingStats
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'صافي المستحقات غير المستلمة',
+                          style: GoogleFonts.cairo(color: Colors.white70, fontSize: 13),
                         ),
-                        child: Text(
-                          'المجموعات المفعلة: ${myGroups.length}',
+                        const SizedBox(height: 8),
+                        Text(
+                          '${displayBalance.toStringAsFixed(0)} ج.م',
                           style: GoogleFonts.cairo(
-                            color: const Color(0xFF10B981),
-                            fontSize: 11.5,
+                            color: Colors.white,
+                            fontSize: 34,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'إجمالي الطلاب: $totalStudents طالب',
-                        style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                        const SizedBox(height: 12),
+                        if (totalRevenueCollected > 0 || totalPaidOut > 0)
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'إجمالي التحصيل: ${totalRevenueCollected.toStringAsFixed(0)} ج.م',
+                                  style: GoogleFonts.cairo(
+                                    color: Colors.white,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'مصروف: ${totalPaidOut.toStringAsFixed(0)} ج.م',
+                                style: GoogleFonts.cairo(color: Colors.white70, fontSize: 11.5),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'المجموعات المفعلة: ${myGroups.length}',
+                                  style: GoogleFonts.cairo(
+                                    color: const Color(0xFF10B981),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'إجمالي الطلاب: $totalStudents طالب',
+                                style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
             ),
 
             const SizedBox(height: 24),

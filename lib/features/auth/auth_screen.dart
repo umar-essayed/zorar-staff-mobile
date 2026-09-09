@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
@@ -44,6 +45,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     Color(0xFF7C3AED), // Indigo Purple
     Color(0xFFDC2626), // Crimson Red
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPhone = prefs.getString('zorar_saved_phone');
+    if (savedPhone != null && savedPhone.isNotEmpty && mounted) {
+      setState(() {
+        _loginUserCtrl.text = savedPhone;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -419,6 +436,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (success && mounted) {
       SoundService.successFeedback();
+      if (_rememberMe) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('zorar_saved_phone', phone);
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('zorar_saved_phone');
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (ctx) => const MainShellScreen()),
