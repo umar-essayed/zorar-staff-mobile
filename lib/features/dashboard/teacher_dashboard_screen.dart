@@ -55,10 +55,16 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
     final fallbackGroups = ref.watch(liveGroupsProvider).value ?? [];
     final displayedGroups = groupsFromApi.isNotEmpty ? groupsFromApi : fallbackGroups;
 
-    final totalStudents = stats['totalStudents'] ?? (displayedGroups.fold<int>(0, (sum, g) => sum + ((g['_count']?['students'] as num?)?.toInt() ?? 0)));
-    final sessionsThisMonth = stats['sessionsThisMonth'] ?? 0;
-    final unsettledEarnings = (stats['unsettledEarnings'] ?? 0).toDouble();
-    final onlineCoursesCount = stats['onlineCoursesCount'] ?? coursesFromApi.length;
+    final totalStudents = parseInt(stats['totalStudents'] ?? stats['totalStudentsCount']) > 0
+        ? parseInt(stats['totalStudents'] ?? stats['totalStudentsCount'])
+        : displayedGroups.fold<int>(
+            0,
+            (sum, g) =>
+                sum +
+                parseInt(g['studentsCount'] ?? g['_count']?['students'] ?? 0));
+    final sessionsThisMonth = parseInt(stats['sessionsThisMonth'] ?? 0);
+    final unsettledEarnings = parseDouble(stats['walletBalance'] ?? stats['unsettledEarnings'] ?? stats['earnings'] ?? 0);
+    final onlineCoursesCount = parseInt(stats['onlineCoursesCount'] ?? coursesFromApi.length);
 
     return Scaffold(
       appBar: AppBar(
@@ -232,7 +238,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
                 ...displayedGroups.map((group) {
                   final gid = group['id']?.toString() ?? '';
                   final gName = group['name']?.toString() ?? 'مجموعة';
-                  final count = (group['_count']?['students'] as num?)?.toInt() ?? 0;
+                  final count = parseInt(group['studentsCount'] ?? group['_count']?['students'] ?? 0);
                   final room = group['room']?.toString() ?? 'القاعة الرئيسية';
 
                   return Padding(

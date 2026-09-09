@@ -314,7 +314,12 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
                   // Group Dropdown
                   groupsAsync.when(
                     data: (groups) {
+                      final user = ref.watch(authProvider).user;
                       final availableGroups = groups.where((g) {
+                        if (user?.isTeacher == true && user?.teacherId != null) {
+                          final gTeacherId = g['teacherId']?.toString() ?? g['teacher']?['id']?.toString();
+                          if (gTeacherId != user!.teacherId) return false;
+                        }
                         if (_selectedYearId != null && g['academicYearId'] != _selectedYearId) return false;
                         if (_selectedSubjectId != null && g['subjectId'] != _selectedSubjectId) return false;
                         return true;
@@ -389,6 +394,20 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
                           final topic = s['topic'] ?? 'حصة بدون عنوان';
                           final status = s['status'] ?? 'OPEN';
                           final isOngoing = status == 'IN_PROGRESS' || status == 'OPEN';
+
+                          String dateLabel = '';
+                          final rawDate = s['scheduledDate'] ?? s['actualDate'] ?? s['createdAt'];
+                          if (rawDate != null) {
+                            try {
+                              final dt = DateTime.parse(rawDate.toString());
+                              const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                              const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+                              final dayName = days[dt.weekday % 7];
+                              final monthName = months[dt.month - 1];
+                              dateLabel = '$dayName ${dt.day} $monthName';
+                            } catch (_) {}
+                          }
+
                           return DropdownMenuItem<String>(
                             value: s['id'].toString(),
                             child: Row(
@@ -400,7 +419,7 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    'حصة $num',
+                                    dateLabel.isNotEmpty ? 'حصة $num • $dateLabel' : 'حصة $num',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11,

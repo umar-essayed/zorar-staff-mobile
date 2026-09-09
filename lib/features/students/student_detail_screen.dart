@@ -638,11 +638,38 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
       itemBuilder: (ctx, idx) {
         final att = attendances[idx];
         final grpName = att['group']?['name']?.toString() ?? 'حصة دراسية';
+        final sessionNum = att['session']?['sessionNumber'] ?? att['sessionNumber'];
+        final sessionTopic = att['session']?['topic']?.toString();
+        final sessionTitle = sessionNum != null
+            ? 'حصة $sessionNum ${sessionTopic != null && sessionTopic.isNotEmpty ? "• $sessionTopic" : ""}'
+            : '';
         final scannedAt = att['scannedAt']?.toString().split('T').first ?? '';
-        final status = att['status']?.toString() ?? 'PRESENT';
+        final status = att['status']?.toString().toUpperCase() ?? 'PRESENT';
         final isPresent = status == 'PRESENT';
+        final isLate = status == 'LATE';
         final isGrace = att['isGraceSession'] == true;
         final assessment = att['assessment'] as Map<String, dynamic>?;
+
+        Color badgeColor;
+        Color textColor;
+        String badgeText;
+        if (isGrace) {
+          badgeColor = Colors.amber.withOpacity(0.15);
+          textColor = Colors.amber[800]!;
+          badgeText = 'حصة سماح ⚠️';
+        } else if (isLate) {
+          badgeColor = Colors.orange.withOpacity(0.15);
+          textColor = Colors.orange[800]!;
+          badgeText = 'حاضر متأخر ⚠️';
+        } else if (isPresent) {
+          badgeColor = const Color(0xFF10B981).withOpacity(0.12);
+          textColor = const Color(0xFF10B981);
+          badgeText = 'حاضر ✅';
+        } else {
+          badgeColor = Colors.red.withOpacity(0.12);
+          textColor = Colors.red;
+          badgeText = 'غائب ❌';
+        }
 
         return Card(
           child: Padding(
@@ -654,31 +681,34 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(grpName, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(grpName, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                          if (sessionTitle.isNotEmpty)
+                            Text(sessionTitle, style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700])),
+                        ],
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isGrace
-                            ? Colors.amber.withOpacity(0.15)
-                            : isPresent
-                                ? const Color(0xFF10B981).withOpacity(0.12)
-                                : Colors.red.withOpacity(0.12),
+                        color: badgeColor,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isGrace ? 'حصة سماح ⚠️' : isPresent ? 'حاضر ✅' : 'غائب ❌',
+                        badgeText,
                         style: GoogleFonts.cairo(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isGrace ? Colors.amber[800] : isPresent ? const Color(0xFF10B981) : Colors.red,
+                          color: textColor,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text('تاريخ الحصة: $scannedAt', style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
+                Text('تاريخ الحضور: $scannedAt', style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
                 if (assessment != null) ...[
                   const Divider(height: 16),
                   Row(

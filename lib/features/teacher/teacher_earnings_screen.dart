@@ -28,9 +28,24 @@ class TeacherEarningsScreen extends ConsumerWidget {
     final txData = txAsync.value ?? {};
     final txList = (txData['transactions'] as List?) ?? [];
 
+    // Filter transactions for this teacher if specified
+    final filteredTxs = txList.where((tx) {
+      if (teacherId != null && teacherId!.isNotEmpty) {
+        final tId = tx['teacherId']?.toString() ?? tx['teacher']?['id']?.toString();
+        final gTeacherId = tx['group']?['teacherId']?.toString();
+        if (tId != null && tId.isNotEmpty) {
+          return tId == teacherId;
+        }
+        if (gTeacherId != null && gTeacherId.isNotEmpty) {
+          return gTeacherId == teacherId;
+        }
+      }
+      return true;
+    }).toList();
+
     // Calculate total earnings from transactions
     double totalCollected = 0.0;
-    for (final tx in txList) {
+    for (final tx in filteredTxs) {
       totalCollected += parseDouble(tx['amount']);
     }
 
@@ -43,7 +58,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
 
     int totalStudents = 0;
     for (final g in myGroups) {
-      totalStudents += parseInt(g['_count']?['students']);
+      totalStudents += parseInt(g['studentsCount'] ?? g['_count']?['students']);
     }
 
     return Scaffold(
@@ -131,7 +146,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
 
-            if (txList.isEmpty)
+            if (filteredTxs.isEmpty)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32.0),
@@ -145,7 +160,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
                 ),
               )
             else
-              ...txList.map((tx) {
+              ...filteredTxs.map((tx) {
                 final desc = tx['description']?.toString() ?? 'تحصيل مالي';
                 final amount = parseDouble(tx['amount']);
                 final date = tx['createdAt']?.toString().split('T').first ?? '';

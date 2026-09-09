@@ -18,8 +18,8 @@ class AppConstants {
   static const String roleTeacher = 'TEACHER';
 
   // Official Zorar Code Brand Identity
-  static const String defaultCenterName = 'زرار كود • EduZorar Pro';
-  static const String appDisplayName = 'زرار كود (Zorar Code)';
+  static const String defaultCenterName = 'EduZorar';
+  static const String appDisplayName = 'EduZorar';
   static const Color defaultPrimaryColor = Color(0xFF0143A3); // Royal Blue #0143A3
   static const Color defaultSecondaryColor = Color(0xFFFF8A00); // Vibrant Orange #FF8A00
   static const String defaultLogoAsset = 'assets/images/zorar_icon.png';

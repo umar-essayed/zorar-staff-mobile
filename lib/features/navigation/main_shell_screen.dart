@@ -83,10 +83,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
     if (user?.isTeacher ?? false) {
       screens = const [
         TeacherDashboardScreen(),
-        LiveClassCockpitScreen(
-          groupName: 'مجموعة 3ث لغة عربية (أ)',
-          sessionNumber: 5,
-        ),
+        LiveClassCockpitScreen(),
         TeacherEarningsScreen(),
       ];
       navItems = const [
@@ -426,22 +423,24 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (ctx) => const GroupsManagementScreen()));
             },
           ),
-          ListTile(
-            leading: const Icon(LucideIcons.bookOpen),
-            title: Text('المواد الدراسية', style: GoogleFonts.cairo(fontSize: 13)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const SubjectsManagementScreen()));
-            },
-          ),
-          ListTile(
-            leading: const Icon(LucideIcons.graduationCap),
-            title: Text('الصفوف وتخصيص البكالوريا', style: GoogleFonts.cairo(fontSize: 13)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const AcademicYearsManagementScreen()));
-            },
-          ),
+          if (!(user?.isTeacher ?? false))
+            ListTile(
+              leading: const Icon(LucideIcons.bookOpen),
+              title: Text('المواد الدراسية', style: GoogleFonts.cairo(fontSize: 13)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const SubjectsManagementScreen()));
+              },
+            ),
+          if (user?.isAdmin == true)
+            ListTile(
+              leading: const Icon(LucideIcons.graduationCap),
+              title: Text('الصفوف وتخصيص البكالوريا', style: GoogleFonts.cairo(fontSize: 13)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const AcademicYearsManagementScreen()));
+              },
+            ),
           if (!(user?.isTeacher ?? false))
             ListTile(
               leading: const Icon(LucideIcons.fileText),
@@ -502,6 +501,8 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const OnlineLessonsManagementScreen()));
               },
             ),
+          ],
+          if (user?.isAdmin == true || (user?.isTeacher ?? false))
             ListTile(
               leading: const Icon(LucideIcons.barChart2, color: Color(0xFF8B5CF6)),
               title: Text('تحليلات وإحصائيات المنصة', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -510,6 +511,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const PlatformAnalyticsScreen()));
               },
             ),
+          if (user?.isAdmin == true) ...[
             ListTile(
               leading: const Icon(LucideIcons.globe),
               title: Text('إعدادات وبوابات المنصة', style: GoogleFonts.cairo(fontSize: 13)),
@@ -563,13 +565,13 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           ),
           ListTile(
             leading: const Icon(LucideIcons.info),
-            title: Text('عن تطبيق زرار كود', style: GoogleFonts.cairo(fontSize: 13)),
-            subtitle: Text('إصدار الإنتاج v1.0.1 (سحابي)', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
+            title: Text('عن تطبيق EduZorar', style: GoogleFonts.cairo(fontSize: 13)),
+            subtitle: Text('EduZorar v1.0.1 (سحابي)', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey)),
             onTap: () {
               Navigator.pop(context);
               showAboutDialog(
                 context: context,
-                applicationName: 'زرار كود • Zorar Code',
+                applicationName: 'EduZorar • إيديوزرار',
                 applicationVersion: 'v1.0.1+1 (Production Release)',
                 applicationIcon: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -578,13 +580,46 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 children: [
                   const SizedBox(height: 8),
                   Text(
-                    'المنظومة الميدانية السحابية المتكاملة لإدارة السناتر التعليمية، المساعدين، كروت الطلاب، ونقاط البيع المحمولة.',
+                    'EduZorar إحدى منتجات شركة زرار كود (Zorar Code).\nالمنظومة الميدانية والسحابية الذكية المتكاملة لإدارة السناتر التعليمية والمدرسين والمنصات.',
                     style: GoogleFonts.cairo(fontSize: 12),
                   ),
                 ],
               );
             },
           ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(LucideIcons.logOut, color: Colors.redAccent),
+            title: Text(
+              'تسجيل الخروج',
+              style: GoogleFonts.cairo(fontSize: 13, color: Colors.redAccent, fontWeight: FontWeight.bold),
+            ),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('تأكيد تسجيل الخروج', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  content: Text('هل أنت متأكد من رغبتك في تسجيل الخروج من التطبيق؟', style: GoogleFonts.cairo()),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text('إلغاء', style: GoogleFonts.cairo()),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text('تسجيل الخروج', style: GoogleFonts.cairo(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true && context.mounted) {
+                Navigator.pop(context);
+                await ref.read(authProvider.notifier).logout(context);
+              }
+            },
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

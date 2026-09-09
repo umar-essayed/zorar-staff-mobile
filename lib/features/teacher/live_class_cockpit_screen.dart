@@ -26,6 +26,7 @@ class LiveClassCockpitScreen extends ConsumerStatefulWidget {
 
 class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen> {
   String? _selectedGroupId;
+  String? _selectedYearId;
   List<Map<String, dynamic>> _students = [];
   bool _isLoadingStudents = false;
   final Map<String, int> _scores = {};
@@ -119,21 +120,40 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final yearsAsync = ref.watch(liveAcademicYearsProvider);
     final groupsAsync = ref.watch(liveGroupsProvider);
-    final groups = groupsAsync.value ?? [];
+    final allGroups = groupsAsync.value ?? [];
 
-    if (_selectedGroupId == null && groups.isNotEmpty) {
+    final groups = allGroups.where((g) {
+      if (_selectedYearId != null && _selectedYearId!.isNotEmpty) {
+        return g['academicYearId']?.toString() == _selectedYearId;
+      }
+      return true;
+    }).toList();
+
+    if ((_selectedGroupId == null || !groups.any((g) => g['id']?.toString() == _selectedGroupId)) && groups.isNotEmpty) {
       _selectedGroupId = groups.first['id']?.toString();
       if (_selectedGroupId != null) {
         _loadStudents(_selectedGroupId!);
       }
     }
 
-    final selectedGroup = groups.firstWhere(
+    final selectedGroup = allGroups.firstWhere(
       (g) => g['id']?.toString() == _selectedGroupId,
       orElse: () => {},
     );
-    final title = widget.groupName ?? selectedGroup['name']?.toString() ?? 'قمرة رصد درجات الحصة';
+    final title = widget.groupName ?? (selectedGroup.isNotEmpty ? selectedGroup['name']?.toString() ?? 'قمرة رصد درجات الحصة' : 'قمرة رصد درجات الحصة');
+
+    // Sort students: unrecorded at top, evaluated at bottom
+    final sortedStudents = List<Map<String, dynamic>>.from(_students);
+    sortedStudents.sort((a, b) {
+      final aId = a['id']?.toString() ?? '';
+      final bId = b['id']?.toString() ?? '';
+      final aSaved = _savedStudentIds.contains(aId);
+      final bSaved = _savedStudentIds.contains(bId);
+      if (aSaved == bSaved) return 0;
+      return aSaved ? 1 : -1;
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -141,8 +161,12 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold)),
-            Text('الحصة (${widget.sessionNumber}) • رصد التسميع والواجب الميداني',
-                style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey)),
+            Text(
+              selectedGroup.isNotEmpty
+                  ? '${selectedGroup['name'] ?? ''} • رصد التسميع والواجب الميداني'
+                  : 'اختر مجموعة لبدء رصد درجات الطلاب',
+              style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
+            ),
           ],
         ),
         actions: [
@@ -158,9 +182,11 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
                 Icon(LucideIcons.users, size: 16, color: branding.primaryColor),
                 const SizedBox(width: 6),
                 Text(
-                  '${_students.length} طالب',
+                  _savedStudentIds.isEmpty
+                      ? '${_students.length} طالب'
+                      : '${_savedStudentIds.length}/${_students.length} تم رصدهم',
                   style: GoogleFonts.cairo(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.bold,
                     color: branding.primaryColor,
                   ),
@@ -172,37 +198,87 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
       ),
       body: Column(
         children: [
-          if (groups.isNotEmpty && widget.groupId == null)
+          if (widget.groupId == null)
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               color: Theme.of(context).cardColor,
-              child: DropdownButtonFormField<String>(
-                value: _selectedGroupId,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'اختر المجموعة الدراسية',
-                  prefixIcon: Icon(LucideIcons.layers, size: 20),
-                  isDense: true,
-                ),
-                items: groups.map((g) {
-                  return DropdownMenuItem<String>(
-                    value: g['id']?.toString(),
-                    child: Text(g['name']?.toString() ?? 'مجموعة', style: GoogleFonts.cairo(fontSize: 13)),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedGroupId = val);
-                    _loadStudents(val);
-                  }
-                },
+              child: Row(
+                children: [
+                  // Year Filter Dropdown
+                  Expanded(
+                    child: yearsAsync.when(
+                      data: (years) => DropdownButtonFormField<String?>(
+                        value: _selectedYearId,
+                        isExpanded: true,
+                        hint: Text('جميع الصفوف', style: GoogleFonts.cairo(fontSize: 12)),
+                        decoration: const InputDecoration(
+                          labelText: 'الصف الدراسي',
+                          prefixIcon: Icon(LucideIcons.graduationCap, size: 18),
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        ),
+                        items: [
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('جميع الصفوف', style: GoogleFonts.cairo(fontSize: 12)),
+                          ),
+                          ...years.map((y) => DropdownMenuItem<String?>(
+                                value: y['id']?.toString(),
+                                child: Text(y['name']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 12)),
+                              )),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedYearId = val;
+                            _selectedGroupId = null;
+                            _students = [];
+                          });
+                        },
+                      ),
+                      loading: () => const SizedBox(height: 36, child: Center(child: LinearProgressIndicator())),
+                      error: (_, __) => const SizedBox(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Group Filter Dropdown
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedGroupId,
+                      isExpanded: true,
+                      hint: Text(groups.isEmpty ? 'لا توجد مجموعات' : 'اختر المجموعة', style: GoogleFonts.cairo(fontSize: 12)),
+                      decoration: const InputDecoration(
+                        labelText: 'المجموعة الدراسية',
+                        prefixIcon: Icon(LucideIcons.layers, size: 18),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      ),
+                      items: groups.map((g) {
+                        return DropdownMenuItem<String>(
+                          value: g['id']?.toString(),
+                          child: Text(
+                            g['name']?.toString() ?? 'مجموعة',
+                            style: GoogleFonts.cairo(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedGroupId = val);
+                          _loadStudents(val);
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
 
           Expanded(
             child: _isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
-                : _students.isEmpty
+                : sortedStudents.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -215,10 +291,10 @@ class _LiveClassCockpitScreenState extends ConsumerState<LiveClassCockpitScreen>
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.all(14),
-                        itemCount: _students.length,
+                        itemCount: sortedStudents.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (ctx, idx) {
-                          final student = _students[idx];
+                          final student = sortedStudents[idx];
                           final sId = student['id']?.toString() ?? '';
                           final name = student['name']?.toString() ?? 'طالب';
                           final code = student['studentCode']?.toString() ?? '';

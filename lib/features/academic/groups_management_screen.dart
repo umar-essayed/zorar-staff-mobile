@@ -46,21 +46,23 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: branding.primaryColor,
-        foregroundColor: Colors.white,
-        icon: const Icon(LucideIcons.plus, size: 20),
-        label: Text('إضافة مجموعة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-        onPressed: () async {
-          final res = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => const GroupFormDialog(),
-          );
-          if (res == true) {
-            ref.invalidate(liveGroupsProvider);
-          }
-        },
-      ),
+      floatingActionButton: (user?.isAdmin == true || (user?.isAssistant ?? false))
+          ? FloatingActionButton.extended(
+              backgroundColor: branding.primaryColor,
+              foregroundColor: Colors.white,
+              icon: const Icon(LucideIcons.plus, size: 20),
+              label: Text('إضافة مجموعة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                final res = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => const GroupFormDialog(),
+                );
+                if (res == true) {
+                  ref.invalidate(liveGroupsProvider);
+                }
+              },
+            )
+          : null,
       body: Column(
         children: [
           // Filter Bar

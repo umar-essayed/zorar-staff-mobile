@@ -51,17 +51,18 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
               setState(() => _isTableView = !_isTableView);
             },
           ),
-          IconButton(
-            icon: const Icon(LucideIcons.userPlus),
-            tooltip: 'إضافة طالب جديد',
-            onPressed: () {
-              SoundService.lightImpact();
-              showDialog(
-                context: context,
-                builder: (ctx) => const StudentFormDialog(),
-              );
-            },
-          ),
+          if (auth.user?.isAdmin == true || (auth.user?.isAssistant ?? false))
+            IconButton(
+              icon: const Icon(LucideIcons.userPlus),
+              tooltip: 'إضافة طالب جديد',
+              onPressed: () {
+                SoundService.lightImpact();
+                showDialog(
+                  context: context,
+                  builder: (ctx) => const StudentFormDialog(),
+                );
+              },
+            ),
         ],
       ),
       body: Column(

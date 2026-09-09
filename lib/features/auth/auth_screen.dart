@@ -388,9 +388,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _handleLogin() async {
+    final phone = _loginUserCtrl.text.trim();
+    final pass = _loginPassCtrl.text.trim();
+
+    if (phone.isEmpty) {
+      SoundService.errorFeedback();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى إدخال رقم الهاتف أو البريد الإلكتروني للمتابعة', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (pass.isEmpty) {
+      SoundService.errorFeedback();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى إدخال كلمة المرور', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final success = await ref
         .read(authProvider.notifier)
-        .login(_loginUserCtrl.text, _loginPassCtrl.text);
+        .login(phone, pass);
 
     if (success && mounted) {
       SoundService.successFeedback();
@@ -798,40 +823,103 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _handleStepNext() async {
     SoundService.lightImpact();
+
     if (_currentRegStep == 0) {
-      if (_regCenterNameCtrl.text.trim().isEmpty) {
-        _regCenterNameCtrl.text = _orgType == 'CENTER' ? 'سنتر الأوائل التعليمي' : 'أكاديمية مستر أحمد';
+      final centerName = _regCenterNameCtrl.text.trim();
+      final phone = _regPhoneCtrl.text.trim();
+
+      if (centerName.isEmpty) {
+        SoundService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _orgType == 'CENTER' ? 'يرجى كتابة اسم السنتر أو المؤسسة للمتابعة' : 'يرجى كتابة اسم المعلم أو الأكاديمية للمتابعة',
+              style: GoogleFonts.cairo(),
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
       }
-      if (_regPhoneCtrl.text.trim().isEmpty) {
-        _regPhoneCtrl.text = '01012345678';
+
+      if (phone.isEmpty || phone.length < 10) {
+        SoundService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يرجى كتابة رقم هاتف رسمي صحيح (10 إلى 11 رقم)', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
       }
+
       setState(() => _currentRegStep = 1);
     } else if (_currentRegStep == 1) {
-      if (_regOwnerNameCtrl.text.trim().isEmpty) {
-        _regOwnerNameCtrl.text = 'أ/ عمر السيد';
+      final ownerName = _regOwnerNameCtrl.text.trim();
+      final email = _regEmailCtrl.text.trim();
+      final pass = _regPassCtrl.text.trim();
+
+      if (ownerName.isEmpty || ownerName.length < 3) {
+        SoundService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يرجى كتابة اسم المدير أو المالك ثلاثي', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
       }
-      if (_regEmailCtrl.text.trim().isEmpty) {
-        _regEmailCtrl.text = 'owner@zorar.app';
+
+      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+      if (email.isEmpty || !emailRegex.hasMatch(email)) {
+        SoundService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يرجى كتابة بريد إلكتروني صالح وموثوق', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
       }
-      if (_regPassCtrl.text.trim().isEmpty) {
-        _regPassCtrl.text = '123456';
+
+      if (pass.isEmpty || pass.length < 6) {
+        SoundService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('كلمة المرور يجب أن لا تقل عن 6 أحرف أو أرقام', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
       }
+
       setState(() => _currentRegStep = 2);
     } else {
+      if (_selectedStages.isEmpty) {
+        SoundService.errorFeedback();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يرجى اختيار مرحلة دراسية واحدة على الأقل', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       // Step 2 Finished -> Submit Registration
       SoundService.successFeedback();
 
       // Update local branding color with chosen color
       ref.read(brandingProvider.notifier).updatePrimaryColor(_selectedPrimaryColor);
-      ref.read(brandingProvider.notifier).updateCenterName(_regCenterNameCtrl.text);
+      ref.read(brandingProvider.notifier).updateCenterName(_regCenterNameCtrl.text.trim());
 
       final success = await ref.read(authProvider.notifier).registerTenant(
             orgType: _orgType,
-            centerName: _regCenterNameCtrl.text,
-            ownerName: _regOwnerNameCtrl.text,
-            phone: _regPhoneCtrl.text,
-            email: _regEmailCtrl.text,
-            password: _regPassCtrl.text,
+            centerName: _regCenterNameCtrl.text.trim(),
+            ownerName: _regOwnerNameCtrl.text.trim(),
+            phone: _regPhoneCtrl.text.trim(),
+            email: _regEmailCtrl.text.trim(),
+            password: _regPassCtrl.text.trim(),
             stages: _selectedStages.toList(),
           );
 
