@@ -143,7 +143,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
       screens = const [
         AdminDashboardScreen(),
         FinancialLedgerScreen(),
-        TeacherSettlementsScreen(),
+        TeachersManagementScreen(),
         StudentsListScreen(),
         BrandingSettingsScreen(),
       ];
@@ -360,8 +360,8 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             ),
           ),
 
-          // Section 1: Daily Operations
-          _buildDrawerSectionTitle('العمليات الميدانية'),
+          // Section 1: Operations
+          _buildDrawerSectionTitle('العمليات والتشغيل الميداني'),
           ListTile(
             leading: const Icon(LucideIcons.qrCode),
             title: Text('ماسح الحضور والباركود', style: GoogleFonts.cairo(fontSize: 13)),
@@ -410,7 +410,16 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           const Divider(),
 
           // Section 2: Academic & Students
-          _buildDrawerSectionTitle('الشؤون الأكاديمية والصفوف'),
+          _buildDrawerSectionTitle('الشؤون الأكاديمية والتعليمية'),
+          if (user?.isAdmin ?? true)
+            ListTile(
+              leading: const Icon(LucideIcons.graduationCap, color: Color(0xFF0EA5E9)),
+              title: Text('إدارة المدرسين والمعلمين', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const TeachersManagementScreen()));
+              },
+            ),
           ListTile(
             leading: const Icon(LucideIcons.users),
             title: Text('دليل وقيد الطلاب', style: GoogleFonts.cairo(fontSize: 13)),
@@ -456,30 +465,40 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           if (user?.isAdmin ?? true) ...[
             const Divider(),
 
-            // Section 3: Admin & Finance
-            _buildDrawerSectionTitle('الإدارة والمنصة (Admin)'),
+            // Section 3: Finance & Treasury
+            _buildDrawerSectionTitle('الماليات والخزينة الميدانية'),
             ListTile(
-              leading: const Icon(LucideIcons.gauge, color: Color(0xFF10B981)),
-              title: Text('الرصيد وشحن باقات الطلاب', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'شحن رصيد',
-                  style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.bold),
-                ),
-              ),
+              leading: const Icon(LucideIcons.fileSpreadsheet),
+              title: Text('سجل وجرد المدفوعات والخزينة', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const QuotaTopupScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const FinancialLedgerScreen()));
               },
             ),
             ListTile(
-              leading: const Icon(LucideIcons.video),
-              title: Text('المنصة الإلكترونية والكورسات', style: GoogleFonts.cairo(fontSize: 13)),
+              leading: const Icon(LucideIcons.badgePercent),
+              title: Text('تسويات وعمولات المعلمين', style: GoogleFonts.cairo(fontSize: 13)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const TeacherSettlementsScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.shieldCheck),
+              title: Text('فريق العمل والمساعدين', style: GoogleFonts.cairo(fontSize: 13)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const StaffManagementScreen()));
+              },
+            ),
+
+            const Divider(),
+
+            // Section 4: Online Platform
+            _buildDrawerSectionTitle('المنصة التعليمية الأونلاين'),
+            ListTile(
+              leading: const Icon(LucideIcons.video, color: Color(0xFF3B82F6)),
+              title: Text('إدارة المنصة والكورسات', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const OnlinePlatformScreen()));
@@ -502,40 +521,8 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(LucideIcons.fileSpreadsheet),
-              title: Text('سجل وجرد المدفوعات والخزينة', style: GoogleFonts.cairo(fontSize: 13)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const FinancialLedgerScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(LucideIcons.graduationCap, color: Color(0xFF0EA5E9)),
-              title: Text('إدارة المدرسين والمعلمين', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const TeachersManagementScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(LucideIcons.badgePercent),
-              title: Text('تسويات وعمولات المعلمين', style: GoogleFonts.cairo(fontSize: 13)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const TeacherSettlementsScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(LucideIcons.shieldCheck),
-              title: Text('فريق العمل والمساعدين', style: GoogleFonts.cairo(fontSize: 13)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const StaffManagementScreen()));
-              },
-            ),
-            ListTile(
               leading: const Icon(LucideIcons.globe),
-              title: Text('إعدادات المنصة والمتجر', style: GoogleFonts.cairo(fontSize: 13)),
+              title: Text('إعدادات وبوابات المنصة', style: GoogleFonts.cairo(fontSize: 13)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const PlatformSettingsScreen()));
@@ -545,8 +532,37 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
           const Divider(),
 
-          // Section 4: Settings & Branding
-          _buildDrawerSectionTitle('الهوية والإعدادات'),
+          // Section 5: System & Branding
+          _buildDrawerSectionTitle('النظام وهوية السنتر'),
+          if (user?.isAdmin ?? true) ...[
+            ListTile(
+              leading: const Icon(LucideIcons.gauge, color: Color(0xFF10B981)),
+              title: Text('الرصيد وشحن باقات الطلاب', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'شحن رصيد',
+                  style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.bold),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const QuotaTopupScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.palette, color: Color(0xFFEC4899)),
+              title: Text('تخصيص الهوية والشعار والألوان', style: GoogleFonts.cairo(fontSize: 13)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => const BrandingSettingsScreen()));
+              },
+            ),
+          ],
           ListTile(
             leading: const Icon(LucideIcons.shieldCheck),
             title: Text('حماية الخزينة برمز PIN', style: GoogleFonts.cairo(fontSize: 13)),
@@ -578,7 +594,6 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 ],
               );
             },
-          ),
         ],
       ),
     );

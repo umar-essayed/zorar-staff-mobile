@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,6 +26,11 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
   bool _isUploadingLogo = false;
   bool _isUploadingBanner = false;
 
+  bool _isCheckingSlug = false;
+  bool? _isSlugAvailable;
+  String? _slugStatusMessage;
+  Timer? _debounceTimer;
+
   final List<Map<String, dynamic>> colorPresets = [
     {'name': 'الأزرق الملكي (Zorar)', 'color': const Color(0xFF0143A3)},
     {'name': 'الزمردي (Emerald)', 'color': const Color(0xFF10B981)},
@@ -44,10 +50,58 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _nameController.dispose();
     _subdomainController.dispose();
     super.dispose();
   }
+
+  void _onSlugChanged(String value) {
+    _debounceTimer?.cancel();
+    final slug = value.trim().toLowerCase();
+    if (slug.isEmpty || slug.length < 3) {
+      setState(() {
+        _isCheckingSlug = false;
+        _isSlugAvailable = null;
+        _slugStatusMessage = 'أدخل 3 أحرف إنجليزية على الأقل (مثال: al-magd)';
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingSlug = true;
+      _isSlugAvailable = null;
+      _slugStatusMessage = 'جاري التحقق من توفر الرابط...';
+    });
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final res = await EduApiService().checkSubdomainAvailability(slug);
+        if (!mounted) return;
+        final isAvail = res['available'] == true;
+        final isCurrent = res['isCurrent'] == true;
+        setState(() {
+          _isCheckingSlug = false;
+          _isSlugAvailable = isAvail;
+          if (isCurrent) {
+            _slugStatusMessage = 'هذا هو الرابط المعتمد الخاص بك حالياً ✅';
+          } else if (isAvail) {
+            _slugStatusMessage = 'الرابط متاح ومتوفر للحجز فوراً! ✨';
+          } else {
+            _slugStatusMessage = 'عذراً، هذا الرابط مستخدم بالفعل من قِبل سنتر آخر ❌';
+          }
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isCheckingSlug = false;
+          _isSlugAvailable = null;
+          _slugStatusMessage = null;
+        });
+      }
+    });
+  }
+
 
   Future<void> _pickAndUploadImage({required bool isLogo}) async {
     try {
@@ -321,10 +375,33 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                     const SizedBox(height: 14),
                     TextField(
                       controller: _subdomainController,
-                      decoration: const InputDecoration(
-                        labelText: 'النطاق الفرعي السحابي (Subdomain)',
-                        prefixIcon: Icon(LucideIcons.globe, size: 18),
+                      onChanged: _onSlugChanged,
+                      decoration: InputDecoration(
+                        labelText: 'معرّف الرابط المخصص (Slug) للمنصة أو المدرس',
+                        hintText: 'مثال: al-magd أو el-farouk',
+                        prefixIcon: const Icon(LucideIcons.link2, size: 18),
                         suffixText: '.eduzorar.com',
+                        suffixIcon: _isCheckingSlug
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                              )
+                            : _isSlugAvailable == true
+                                ? const Icon(LucideIcons.checkCircle2, color: Color(0xFF10B981), size: 20)
+                                : _isSlugAvailable == false
+                                    ? const Icon(LucideIcons.alertCircle, color: Colors.red, size: 20)
+                                    : null,
+                        helperText: _slugStatusMessage ?? 'الرابط الميداني: https://${_subdomainController.text.trim()}.eduzorar.com',
+                        helperMaxLines: 2,
+                        helperStyle: TextStyle(
+                          color: _isSlugAvailable == true
+                              ? const Color(0xFF059669)
+                              : _isSlugAvailable == false
+                                  ? Colors.red
+                                  : Colors.grey[600],
+                          fontWeight: _isSlugAvailable != null ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 11.5,
+                        ),
                       ),
                     ),
                   ],

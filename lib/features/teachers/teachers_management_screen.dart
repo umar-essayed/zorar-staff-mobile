@@ -22,6 +22,7 @@ class TeachersManagementScreen extends ConsumerStatefulWidget {
 class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScreen> {
   String _searchQuery = '';
   String _selectedSubjectFilter = 'الكل';
+  bool _isTableView = false;
 
   Future<void> _openResetPasswordDialog(Map<String, dynamic> teacher) async {
     final passCtrl = TextEditingController();
@@ -186,23 +187,41 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
     final teachersAsync = ref.watch(liveTeachersProvider);
     final subjectsAsync = ref.watch(liveSubjectsProvider);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'إدارة المدرسين والمعلمين',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(LucideIcons.refreshCw, size: 18),
-              tooltip: 'تحديث البيانات',
-              onPressed: () => ref.invalidate(liveTeachersProvider),
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'إدارة المدرسين والمعلمين',
+          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
-        floatingActionButton: FloatingActionButton.extended(
+        actions: [
+          IconButton(
+            icon: Icon(_isTableView ? LucideIcons.layoutGrid : LucideIcons.tableProperties),
+            tooltip: _isTableView ? 'عرض البطاقات' : 'عرض الجدول التفصيلي',
+            onPressed: () {
+              SoundService.lightImpact();
+              setState(() => _isTableView = !_isTableView);
+            },
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.userPlus),
+            tooltip: 'إضافة معلم جديد',
+            onPressed: () async {
+              SoundService.lightImpact();
+              final res = await showDialog<bool>(
+                context: context,
+                builder: (_) => const TeacherFormDialog(),
+              );
+              if (res == true) ref.invalidate(liveTeachersProvider);
+            },
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.refreshCw, size: 18),
+            tooltip: 'تحديث البيانات',
+            onPressed: () => ref.invalidate(liveTeachersProvider),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
           backgroundColor: branding.primaryColor,
           foregroundColor: Colors.white,
           icon: Icon(LucideIcons.userPlus),
@@ -310,54 +329,230 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                         ),
                       ),
 
-                      // List
+                      // List or Table
                       Expanded(
                         child: filtered.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(LucideIcons.userX, size: 54, color: Colors.grey[400]),
-                                    const SizedBox(height: 12),
-                                    Text('لا يوجد معلمون مطابقون للبحث', style: GoogleFonts.cairo(color: Colors.grey, fontSize: 13)),
-                                  ],
-                                ),
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                                children: [
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(LucideIcons.users, size: 54, color: Colors.grey.withOpacity(0.4)),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'لا يوجد معلمون مطابقون للبحث',
+                                          style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(backgroundColor: branding.primaryColor, foregroundColor: Colors.white),
+                                          icon: const Icon(LucideIcons.userPlus, size: 16),
+                                          label: const Text('إضافة أول معلم الآن'),
+                                          onPressed: () async {
+                                            final res = await showDialog<bool>(
+                                              context: context,
+                                              builder: (_) => const TeacherFormDialog(),
+                                            );
+                                            if (res == true) ref.invalidate(liveTeachersProvider);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               )
-                            : ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 14, 16, 80),
-                                itemCount: filtered.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                                itemBuilder: (ctx, idx) {
-                                  final t = filtered[idx];
-                                  return _buildTeacherCard(t, branding);
-                                },
-                              ),
+                            : _isTableView
+                                ? _buildHorizontalScrollViewTable(filtered, branding)
+                                : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 80),
+                                    itemCount: filtered.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                    itemBuilder: (ctx, idx) {
+                                      final t = filtered[idx];
+                                      return _buildTeacherCard(t, branding);
+                                    },
+                                  ),
                       ),
                     ],
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, __) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.alertCircle, color: Colors.red, size: 48),
-                        const SizedBox(height: 12),
-                        Text('فشل تحميل المعلمين: $e', textAlign: TextAlign.center, style: GoogleFonts.cairo()),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () => ref.invalidate(liveTeachersProvider),
-                          child: const Text('إعادة المحاولة'),
-                        ),
-                      ],
+                error: (e, __) => ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                  children: [
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(LucideIcons.alertCircle, color: Colors.red, size: 48),
+                          const SizedBox(height: 12),
+                          Text('فشل تحميل بيانات المعلمين من السيرفر', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
+                          Text('$e', textAlign: TextAlign.center, style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11)),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => ref.invalidate(liveTeachersProvider),
+                            icon: const Icon(LucideIcons.refreshCw, size: 16),
+                            label: const Text('إعادة المحاولة'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHorizontalScrollViewTable(List<Map<String, dynamic>> teachers, BrandingModel branding) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+          ),
+          child: DataTable(
+            headingRowColor: MaterialStateProperty.all(branding.primaryColor.withOpacity(0.08)),
+            columns: const [
+              DataColumn(label: Text('اسم المعلم')),
+              DataColumn(label: Text('المادة الدراسية')),
+              DataColumn(label: Text('المراحل والصفوف')),
+              DataColumn(label: Text('الهاتف')),
+              DataColumn(label: Text('النسبة / الاتفاقية')),
+              DataColumn(label: Text('المجموعات')),
+              DataColumn(label: Text('الطلاب')),
+              DataColumn(label: Text('حساب الدخول')),
+              DataColumn(label: Text('إجراءات')),
+            ],
+            rows: teachers.map((t) {
+              final id = t['id']?.toString() ?? '';
+              final name = t['name']?.toString() ?? 'معلم';
+              final phone = t['phone']?.toString() ?? '-';
+              final subject = (t['subject'] is Map ? t['subject']['name'] : null)?.toString() ?? 'عام';
+              final groups = (t['groups'] as List<dynamic>?) ?? [];
+              final bio = t['bio']?.toString() ?? '';
+              final hasUser = t['user'] != null;
+
+              final centerPct = (t['centerPercentage'] as num?)?.toDouble() ?? 20.0;
+              final teacherPct = 100.0 - centerPct;
+
+              int studentsCount = 0;
+              for (final g in groups) {
+                if (g is Map) {
+                  studentsCount += (g['_count']?['students'] as num? ?? 0).toInt();
+                }
+              }
+
+              final gradesTaught = <String>{};
+              for (final g in groups) {
+                if (g is Map) {
+                  final yName = g['academicYear']?['name']?.toString() ?? '';
+                  if (yName.isNotEmpty) gradesTaught.add(yName);
+                }
+              }
+              if (gradesTaught.isEmpty && bio.contains('الصفوف:')) {
+                final sub = bio.split('الصفوف:').last.split('|').first.trim();
+                if (sub.isNotEmpty) gradesTaught.add(sub);
+              }
+
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: branding.primaryColor.withOpacity(0.12),
+                          child: Text(
+                            name.isNotEmpty ? name[0] : 'م',
+                            style: TextStyle(color: branding.primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  DataCell(Text(subject)),
+                  DataCell(Text(gradesTaught.isNotEmpty ? gradesTaught.join('، ') : 'غير محدد')),
+                  DataCell(Text(phone)),
+                  DataCell(Text('$teacherPct% للمعلم / $centerPct% للسنتر')),
+                  DataCell(Text('${groups.length} مجموعات')),
+                  DataCell(Text('$studentsCount طالب')),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: hasUser ? const Color(0xFF10B981).withOpacity(0.12) : Colors.grey.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        hasUser ? 'مفعل' : 'بدون حساب',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: hasUser ? const Color(0xFF10B981) : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(LucideIcons.eye, size: 18),
+                          tooltip: 'البروفايل الكامل',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TeacherProfileDetailScreen(teacherId: id, initialTeacher: t),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.edit3, size: 18, color: Colors.blueAccent),
+                          tooltip: 'تعديل المعلم',
+                          onPressed: () async {
+                            final updated = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => TeacherFormDialog(teacher: t),
+                            );
+                            if (updated == true) ref.invalidate(liveTeachersProvider);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.keyRound, size: 18, color: Colors.amber),
+                          tooltip: 'كلمة المرور',
+                          onPressed: () => _openResetPasswordDialog(t),
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.trash2, size: 18, color: Colors.redAccent),
+                          tooltip: 'حذف المعلم',
+                          onPressed: () => _confirmDelete(t),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -430,6 +625,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                   radius: 28,
                   backgroundColor: branding.primaryColor.withOpacity(0.12),
                   backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  onBackgroundImageError: avatarUrl != null && avatarUrl.isNotEmpty ? (_, __) {} : null,
                   child: avatarUrl == null || avatarUrl.isEmpty
                       ? Icon(LucideIcons.user, size: 28, color: branding.primaryColor)
                       : null,

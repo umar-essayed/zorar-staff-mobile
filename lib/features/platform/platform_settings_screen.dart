@@ -24,6 +24,7 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
   final whatsappCtrl = TextEditingController();
   final heroTitleCtrl = TextEditingController();
 
+  String _loadedPlatformUrl = '';
   bool _isSaving = false;
   bool _isLoading = true;
 
@@ -39,6 +40,16 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
       final host = branding.subdomain.isNotEmpty ? branding.subdomain : 'main';
       final storefront = await EduApiService().getPublicStorefront(host);
       if (storefront != null && mounted) {
+        if (storefront['platformUrl'] != null && storefront['platformUrl'].toString().isNotEmpty) {
+          _loadedPlatformUrl = storefront['platformUrl'].toString();
+        }
+        final features = storefront['portalFeatures'];
+        if (features is Map) {
+          enableOnlineVideos = features['enableOnlineVideos'] != false;
+          enableOnlineQuizzes = features['enableOnlineQuizzes'] != false;
+          enableOnlineBookStore = features['enableOnlineBookStore'] != false;
+          enableOnlinePayments = features['enableOnlinePayments'] != false;
+        }
         final config = storefront['config'] ?? storefront;
         if (config is Map) {
           heroTitleCtrl.text = config['heroTitle']?.toString() ?? '';
@@ -73,6 +84,12 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
           if (whatsappCtrl.text.trim().isNotEmpty) 'whatsapp': whatsappCtrl.text.trim(),
           if (hotlineCtrl.text.trim().isNotEmpty) 'hotline': hotlineCtrl.text.trim(),
         },
+        'portalFeatures': {
+          'enableOnlineVideos': enableOnlineVideos,
+          'enableOnlineQuizzes': enableOnlineQuizzes,
+          'enableOnlineBookStore': enableOnlineBookStore,
+          'enableOnlinePayments': enableOnlinePayments,
+        },
       };
 
       final success = await EduApiService().updateStorefrontConfig(payload);
@@ -82,7 +99,7 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               backgroundColor: Color(0xFF10B981),
-              content: Text('تم حفظ إعدادات المنصة الإلكترونية بنجاح! ✅'),
+              content: Text('تم حفظ إعدادات المنصة وبوابة الطلاب بنجاح! ✅'),
             ),
           );
         }
@@ -104,12 +121,14 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
-    final platformUrl = 'https://${branding.subdomain.isNotEmpty ? branding.subdomain : "portal"}.zoraredu.com';
+    final platformUrl = _loadedPlatformUrl.isNotEmpty
+        ? _loadedPlatformUrl
+        : 'https://${branding.subdomain.isNotEmpty ? branding.subdomain : "portal"}.zoraredu.com';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'المنصة الإلكترونية (Portal)',
+          'إعدادات المنصة وبوابة الطلاب',
           style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
         actions: [

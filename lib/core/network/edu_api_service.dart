@@ -791,6 +791,20 @@ class EduApiService {
     }
   }
 
+  Future<List<String>> getGrantedCourseGroups(String courseId) async {
+    try {
+      final res = await _dio.get('/courses/$courseId/granted-groups');
+      if (res.data is List) {
+        return List<String>.from((res.data as List).map((e) => e.toString()));
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getGrantedCourseGroups: $e');
+      return [];
+    }
+  }
+
+
   Future<Map<String, dynamic>?> getPlatformAnalytics({String? teacherId}) async {
     try {
       final query = teacherId != null ? {'teacherId': teacherId} : null;
@@ -897,4 +911,38 @@ class EduApiService {
       return false;
     }
   }
+
+  // ==========================================
+  // 13. Slug Availability & Staff Activities
+  // ==========================================
+  Future<Map<String, dynamic>> checkSubdomainAvailability(String slug) async {
+    try {
+      final res = await _dio.get('/tenants/check-subdomain/$slug');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error checkSubdomainAvailability: $e');
+      return {'available': false, 'slug': slug, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>?> getStaffActivityProfile(String staffId, {String timeRange = 'today'}) async {
+    try {
+      final res = await _dio.get('/tenants/staff/$staffId/activity', queryParameters: {'timeRange': timeRange});
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getStaffActivityProfile: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getMyAssistantActivity({String timeRange = 'today'}) async {
+    try {
+      final res = await _dio.get('/tenants/staff/me/activity', queryParameters: {'timeRange': timeRange});
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error getMyAssistantActivity: $e');
+      return null;
+    }
+  }
 }
+

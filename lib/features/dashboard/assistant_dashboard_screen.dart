@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/providers/edu_data_providers.dart';
+import '../../core/utils/numeric_utils.dart';
 import '../attendance/attendance_scanner_screen.dart';
 import '../attendance/emergency_session_dialog.dart';
 import '../cashier/mobile_pos_screen.dart';
@@ -15,224 +17,305 @@ class AssistantDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branding = ref.watch(brandingProvider);
+    final activityAsync = ref.watch(liveMyActivityProvider);
+    final groupsAsync = ref.watch(liveGroupsProvider);
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Shift Quick Status Banner
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF1E293B),
-                    const Color(0xFF0F172A),
-                  ],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: branding.primaryColor.withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
+      body: RefreshIndicator(
+        color: branding.primaryColor,
+        onRefresh: () async {
+          ref.invalidate(liveMyActivityProvider);
+          ref.invalidate(liveGroupsProvider);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Shift Quick Status Banner
+              activityAsync.when(
+                data: (activityData) {
+                  final stats = activityData['stats'] as Map<String, dynamic>?;
+                  final cashCollected = stats?['cashCollected'] ?? 0;
+                  final invoiceCount = stats?['posInvoicesCount'] ?? 0;
+                  final scanCount = stats?['attendanceScans'] ?? 0;
+
+                  return Container(
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: branding.primaryColor.withOpacity(0.2),
-                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF1E293B),
+                          Color(0xFF0F172A),
+                        ],
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: branding.primaryColor.withOpacity(0.3),
+                      ),
                     ),
-                    child: Icon(LucideIcons.scanLine, color: branding.primaryColor, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          'شيفت الاستقبال مفتوح 🟢',
-                          style: GoogleFonts.cairo(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: branding.primaryColor.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(LucideIcons.scanLine, color: branding.primaryColor, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'شيفت الاستقبال مفتوح 🟢',
+                                style: GoogleFonts.cairo(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'نقدية الدرج: ${NumericUtils.formatCurrency(cashCollected)} ج.م ($invoiceCount إيصال)',
+                                style: GoogleFonts.cairo(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                'حضور الطلاب اليوم: $scanCount طالب مسجل',
+                                style: GoogleFonts.cairo(
+                                  color: branding.primaryColor.withOpacity(0.9),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          'نقدية الدرج الحالية: 8,450 ج.م (34 إيصال)',
-                          style: GoogleFonts.cairo(
-                            color: Colors.white70,
-                            fontSize: 12.5,
-                          ),
+                        IconButton.filledTonal(
+                          icon: const Icon(LucideIcons.lock),
+                          tooltip: 'تقفيل الدرج والشيفت',
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => const ShiftClosingDialog(),
+                            );
+                          },
                         ),
                       ],
                     ),
+                  );
+                },
+                loading: () => Container(
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  IconButton.filledTonal(
-                    icon: const Icon(LucideIcons.lock),
-                    tooltip: 'تقفيل الدرج والشيفت',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => const ShiftClosingDialog(),
-                      );
-                    },
+                  child: Center(child: CircularProgressIndicator(color: branding.primaryColor)),
+                ),
+                error: (_, __) => Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(LucideIcons.scanLine, color: Colors.white70),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'شيفت الاستقبال مفتوح',
+                          style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // High-Speed Field Action Buttons
+              Text(
+                'العمليات الميدانية السريعة',
+                style: GoogleFonts.cairo(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionTile(
+                      context: context,
+                      title: 'تسجيل الحضور',
+                      subtitle: 'مسح QR سريع',
+                      icon: LucideIcons.qrCode,
+                      color: branding.primaryColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => const AttendanceScannerScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionTile(
+                      context: context,
+                      title: 'نقطة البيع',
+                      subtitle: 'تحصيل وملازم',
+                      icon: LucideIcons.receipt,
+                      color: const Color(0xFF3B82F6),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => const MobilePosScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
-            // High-Speed Field Action Buttons
-            Text(
-              'العمليات الميدانية السريعة',
-              style: GoogleFonts.cairo(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionTile(
+                      context: context,
+                      title: 'طالب جديد',
+                      subtitle: 'إصدار بطاقة فورية',
+                      icon: LucideIcons.userPlus,
+                      color: const Color(0xFF8B5CF6),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => const StudentFormDialog(),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionTile(
+                      context: context,
+                      title: 'حصة إضافية',
+                      subtitle: 'جلسة بديلة',
+                      icon: LucideIcons.calendarPlus,
+                      color: const Color(0xFFF59E0B),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => const EmergencySessionDialog(),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionTile(
-                    context: context,
-                    title: 'تسجيل الحضور',
-                    subtitle: 'مسح QR سريع',
-                    icon: LucideIcons.qrCode,
-                    color: branding.primaryColor,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (ctx) => const AttendanceScannerScreen(),
-                        ),
-                      );
-                    },
+              const SizedBox(height: 24),
+
+              // Real Active Groups in the Center
+              groupsAsync.when(
+                loading: () => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator(color: branding.primaryColor),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionTile(
-                    context: context,
-                    title: 'نقطة البيع',
-                    subtitle: 'تحصيل وملازم',
-                    icon: LucideIcons.receipt,
-                    color: const Color(0xFF3B82F6),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (ctx) => const MobilePosScreen(),
-                        ),
-                      );
-                    },
+                error: (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text('تعذر تحميل مجموعات اليوم: $e', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
                   ),
                 ),
-              ],
-            ),
+                data: (groups) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'المجموعات الدراسية بالسنتر',
+                            style: GoogleFonts.cairo(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${groups.length} مجموعات',
+                            style: GoogleFonts.cairo(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (groups.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              children: [
+                                Icon(LucideIcons.calendarX, size: 40, color: Colors.grey.withOpacity(0.5)),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'لا توجد مجموعات مسجلة حالياً',
+                                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey[700]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        ...groups.take(6).map((group) {
+                          final groupName = group['name']?.toString() ?? 'مجموعة';
+                          final teacherName = group['teacher']?['name']?.toString() ??
+                              (group['teacherName']?.toString() ?? 'المعلم');
+                          final grade = group['academicYear']?['name']?.toString() ?? '';
+                          final schedule = group['schedule']?.toString() ?? 'مواعيد محددة';
+                          final studentsCount = (group['studentsCount'] ?? group['_count']?['enrollments'] ?? 0) as int;
 
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionTile(
-                    context: context,
-                    title: 'طالب جديد',
-                    subtitle: 'إصدار بطاقة فورية',
-                    icon: LucideIcons.userPlus,
-                    color: const Color(0xFF8B5CF6),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => const StudentFormDialog(),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionTile(
-                    context: context,
-                    title: 'حصة إضافية',
-                    subtitle: 'جلسة بديلة',
-                    icon: LucideIcons.calendarPlus,
-                    color: const Color(0xFFF59E0B),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => const EmergencySessionDialog(),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Today's Active Groups in the Center
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'الحصص المنعقدة اليوم بالسنتر',
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '4 مجموعات',
-                  style: GoogleFonts.cairo(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            _buildGroupStatusCard(
-              groupName: 'مجموعة 3ث لغة عربية (أ)',
-              teacherName: 'أ/ أحمد كمال',
-              time: '02:00 م - 04:00 م (قاعة 1)',
-              attendedCount: 42,
-              totalCount: 45,
-              statusText: 'منعقدة الآن',
-              isLive: true,
-              brandingColor: branding.primaryColor,
-            ),
-            const SizedBox(height: 10),
-            _buildGroupStatusCard(
-              groupName: 'مجموعة 2ث كيمياء (ب)',
-              teacherName: 'أ/ حسام فؤاد',
-              time: '04:30 م - 06:30 م (قاعة 2)',
-              attendedCount: 0,
-              totalCount: 38,
-              statusText: 'تبدأ قريباً',
-              isLive: false,
-              brandingColor: branding.primaryColor,
-            ),
-            const SizedBox(height: 10),
-            _buildGroupStatusCard(
-              groupName: 'مجموعة 1ث فيزياء (ج)',
-              teacherName: 'أ/ محمد إبراهيم',
-              time: '07:00 م - 09:00 م (قاعة 1)',
-              attendedCount: 0,
-              totalCount: 30,
-              statusText: 'تبدأ قريباً',
-              isLive: false,
-              brandingColor: branding.primaryColor,
-            ),
-          ],
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10.0),
+                            child: _buildGroupStatusCard(
+                              groupName: groupName,
+                              teacherName: teacherName,
+                              time: '$grade • $schedule',
+                              attendedCount: studentsCount,
+                              totalCount: (group['maxCapacity'] ?? 50) as int,
+                              statusText: 'نشطة',
+                              isLive: true,
+                              brandingColor: branding.primaryColor,
+                            ),
+                          );
+                        }),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

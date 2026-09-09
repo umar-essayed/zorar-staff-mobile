@@ -49,21 +49,13 @@ jobs:
       - name: Run Tests
         run: flutter test
 
-      - name: Build Debug APK (Direct Sideload)
-        run: flutter build apk --debug
-
       - name: Build Signed Release APK (Universal Production)
         run: flutter build apk --release --no-tree-shake-icons
-
-      - name: Build Signed App Bundle (Google Play Store AAB)
-        run: flutter build appbundle --release --no-tree-shake-icons
 
       - name: Package & Generate Checksums
         run: |
           mkdir -p output_dist
-          cp build/app/outputs/flutter-apk/app-debug.apk output_dist/zorar-staff-debug.apk
           cp build/app/outputs/flutter-apk/app-release.apk output_dist/zorar-staff-release-signed.apk
-          cp build/app/outputs/bundle/release/app-release.aab output_dist/zorar-staff-production.aab
           cd output_dist
           sha256sum * > SHA256SUMS.txt
           echo "Generated Distribution Packages:"
@@ -91,13 +83,9 @@ jobs:
 
             ---
             ### 📦 ملفات التثبيت المتاحة:
-            1. 📲 **`zorar-staff-release-signed.apk` (نسخة الإنتاج الموقعة):**
-               - حزمة إنتاج رسمية موثقة وموقعة بالشهادة السحابية، محسنة بالكامل للسرعة وتقليل الحجم.
-            2. ⚡ **`zorar-staff-debug.apk` (نسخة التثبيت الفوري):**
-               - للتجربة السريعة والمباشرة دون قيود أمنية على أي جهاز أندرويد.
-            3. 🏪 **`zorar-staff-production.aab` (Google Play App Bundle):**
-               - الحزمة الجاهزة للرفع المباشر إلى متجر جوجل بلاي (Google Play Console).
-            4. 🛡️ **`SHA256SUMS.txt`:**
+            1. 📲 **`zorar-staff-release-signed.apk` (نسخة الإنتاج الموقعة السريعة):**
+               - حزمة إنتاج رسمية موثقة وموقعة بالشهادة السحابية، محسنة بالكامل للسرعة وتقليل الحجم وجاهزة للتثبيت الفوري.
+            2. 🛡️ **`SHA256SUMS.txt`:**
                - البصمات الرقمية للتحقق من سلامة وصحة الملفات.
 
             ---

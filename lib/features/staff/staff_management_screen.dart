@@ -6,6 +6,7 @@ import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
+import 'assistant_profile_detail_screen.dart';
 import 'staff_form_dialog.dart';
 
 class StaffManagementScreen extends ConsumerStatefulWidget {
@@ -252,83 +253,115 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> {
                                 borderRadius: BorderRadius.circular(14),
                                 side: BorderSide(color: Colors.grey.withOpacity(0.15)),
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Row(
-                                            children: [
-                                              CircleAvatar(
-                                                backgroundColor: branding.primaryColor.withOpacity(0.12),
-                                                child: Icon(LucideIcons.user, color: branding.primaryColor),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      name,
-                                                      style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                    Text(
-                                                      '$role • $phone',
-                                                      style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (ctx) => AssistantProfileDetailScreen(
+                                        staffId: id,
+                                        initialName: name,
+                                        initialRole: member['role']?.toString(),
+                                        initialPhone: phone,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                CircleAvatar(
+                                                  backgroundColor: branding.primaryColor.withOpacity(0.12),
+                                                  child: Icon(LucideIcons.user, color: branding.primaryColor),
                                                 ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        name,
+                                                        style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                      Text(
+                                                        '$role • $phone',
+                                                        style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Switch(
+                                                value: isActive,
+                                                activeColor: branding.primaryColor,
+                                                onChanged: (val) => _toggleStatus(id, val),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(LucideIcons.trash2, size: 18, color: Colors.redAccent),
+                                                tooltip: 'حذف الموظف',
+                                                onPressed: () => _confirmDelete(context, id, name),
                                               ),
                                             ],
                                           ),
-                                        ),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Switch(
-                                              value: isActive,
-                                              activeColor: branding.primaryColor,
-                                              onChanged: (val) => _toggleStatus(id, val),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(LucideIcons.trash2, size: 18, color: Colors.redAccent),
-                                              tooltip: 'حذف الموظف',
-                                              onPressed: () => _confirmDelete(context, id, name),
-                                            ),
-                                          ],
+                                        ],
+                                      ),
+                                      if (permissions.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: permissions.map((p) {
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).scaffoldBackgroundColor,
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                                              ),
+                                              child: Text(
+                                                p,
+                                                style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[800]),
+                                              ),
+                                            );
+                                          }).toList(),
                                         ),
                                       ],
-                                    ),
-                                    if (permissions.isNotEmpty) ...[
-                                      const SizedBox(height: 12),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: permissions.map((p) {
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).scaffoldBackgroundColor,
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'عرض تقرير الأداء وسجل النشاط',
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 11.5,
+                                              color: branding.primaryColor,
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            child: Text(
-                                              p,
-                                              style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[800]),
-                                            ),
-                                          );
-                                        }).toList(),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Icon(LucideIcons.chevronLeft, size: 14, color: branding.primaryColor),
+                                        ],
                                       ),
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             );
