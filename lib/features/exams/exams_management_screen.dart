@@ -248,8 +248,8 @@ class _ExamsManagementScreenState extends ConsumerState<ExamsManagementScreen> {
     final isPublished = exam['isPublished'] ?? true;
     final questionsCount = exam['questionsCount'] ?? (exam['questions'] is List ? (exam['questions'] as List).length : 0);
     final submissionsCount = exam['submissionsCount'] ?? (exam['submissions'] is List ? (exam['submissions'] as List).length : 0);
-    final duration = exam['duration'] ?? 60;
-    final totalMarks = exam['totalMarks'] ?? 100;
+    final duration = exam['durationMinutes'] ?? exam['duration'] ?? 60;
+    final totalMarks = exam['totalScore'] ?? exam['totalMarks'] ?? 100;
 
     final availableFrom = exam['availableFrom'] != null ? DateTime.tryParse(exam['availableFrom'].toString()) : null;
     final availableUntil = exam['availableUntil'] != null ? DateTime.tryParse(exam['availableUntil'].toString()) : null;

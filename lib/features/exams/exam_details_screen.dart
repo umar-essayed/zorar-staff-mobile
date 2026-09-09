@@ -176,9 +176,9 @@ class _ExamDetailsScreenState extends ConsumerState<ExamDetailsScreen> with Sing
     final submissions = (e['submissions'] as List?) ?? [];
 
     final isPublished = e['isPublished'] ?? true;
-    final duration = e['duration'] ?? 60;
-    final totalMarks = e['totalMarks'] ?? 100;
-    final passingMarks = e['passingMarks'] ?? 50;
+    final duration = e['durationMinutes'] ?? e['duration'] ?? 60;
+    final totalMarks = e['totalScore'] ?? e['totalMarks'] ?? 100;
+    final passingMarks = e['passingScore'] ?? e['passingMarks'] ?? 50;
 
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
     final availableFrom = e['availableFrom'] != null ? DateTime.tryParse(e['availableFrom'].toString()) : null;
@@ -433,8 +433,12 @@ class _ExamDetailsScreenState extends ConsumerState<ExamDetailsScreen> with Sing
 
                 // Options
                 ...options.asMap().entries.map((entry) {
-                  final optText = entry.value.toString();
-                  final isCorrect = optText == correctAnswer;
+                  final optObj = entry.value;
+                  final optText = (optObj is Map) ? (optObj['text']?.toString() ?? '') : optObj.toString();
+                  final optId = (optObj is Map) ? (optObj['id']?.toString() ?? '') : '';
+                  final isCorrect = (optText == correctAnswer) ||
+                      (optId.isNotEmpty && optId == correctAnswer) ||
+                      (q['correctOption'] != null && (optText == q['correctOption'] || optId == q['correctOption']));
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 6),

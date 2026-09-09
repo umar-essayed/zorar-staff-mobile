@@ -52,9 +52,9 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
     _titleCtrl = TextEditingController(text: e?['title']?.toString() ?? '');
     _descCtrl = TextEditingController(text: e?['description']?.toString() ?? '');
     _instructionsCtrl = TextEditingController(text: e?['instructions']?.toString() ?? '');
-    _durationCtrl = TextEditingController(text: (e?['duration'] ?? 60).toString());
-    _totalMarksCtrl = TextEditingController(text: (e?['totalMarks'] ?? 100).toString());
-    _passingMarksCtrl = TextEditingController(text: (e?['passingMarks'] ?? 50).toString());
+    _durationCtrl = TextEditingController(text: (e?['durationMinutes'] ?? e?['duration'] ?? 60).toString());
+    _totalMarksCtrl = TextEditingController(text: (e?['totalScore'] ?? e?['totalMarks'] ?? 100).toString());
+    _passingMarksCtrl = TextEditingController(text: (e?['passingScore'] ?? e?['passingMarks'] ?? 50).toString());
     _maxAttemptsCtrl = TextEditingController(text: (e?['maxAttempts'] ?? 1).toString());
 
     _selectedGroupId = e?['groupId']?.toString();
@@ -81,9 +81,9 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
           'type': q['type']?.toString() ?? 'MCQ',
           'points': (q['points'] ?? 1).toString(),
           'options': (q['options'] is List)
-              ? List<String>.from((q['options'] as List).map((o) => o.toString()))
+              ? List<String>.from((q['options'] as List).map((o) => (o is Map) ? (o['text']?.toString() ?? '') : o.toString()))
               : ['أ', 'ب', 'ج', 'د'],
-          'correctAnswer': q['correctAnswer']?.toString() ?? 'أ',
+          'correctAnswer': q['correctAnswer']?.toString() ?? q['correctOption']?.toString() ?? 'أ',
           'explanation': q['explanation']?.toString() ?? '',
         }),
       );
@@ -194,32 +194,56 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final data = {
-        'title': _titleCtrl.text.trim(),
-        'description': _descCtrl.text.trim(),
-        'instructions': _instructionsCtrl.text.trim(),
-        'duration': int.tryParse(_durationCtrl.text) ?? 60,
-        'totalMarks': double.tryParse(_totalMarksCtrl.text) ?? 100,
-        'passingMarks': double.tryParse(_passingMarksCtrl.text) ?? 50,
-        'maxAttempts': int.tryParse(_maxAttemptsCtrl.text) ?? 1,
-        'groupId': _selectedGroupId,
-        'subjectId': _selectedSubjectId,
-        'teacherId': _selectedTeacherId,
-        'academicYearId': _selectedAcademicYearId,
-        'availableFrom': _availableFrom?.toIso8601String(),
-        'availableUntil': _availableUntil?.toIso8601String(),
-        'isPublished': _isPublished,
-        'shuffleQuestions': _shuffleQuestions,
-        'showModelAnswers': _showModelAnswers,
-        'questions': _questions.map((q) => {
+      final duration = int.tryParse(_durationCtrl.text) ?? 60;
+      final totalMarks = (double.tryParse(_totalMarksCtrl.text) ?? 100).toInt();
+      final passingMarks = (double.tryParse(_passingMarksCtrl.text) ?? 50).toInt();
+      final maxAttempts = int.tryParse(_maxAttemptsCtrl.text) ?? 1;
+
+      final formattedQuestions = _questions.map((q) {
+        final rawOpts = (q['options'] is List) ? (q['options'] as List) : ['أ', 'ب', 'ج', 'د'];
+        final optionsList = rawOpts.asMap().entries.map((entry) {
+          final opt = entry.value.toString();
+          return {
+            'id': String.fromCharCode(65 + entry.key),
+            'text': opt,
+          };
+        }).toList();
+
+        final correct = q['correctAnswer']?.toString() ?? q['correctOption']?.toString() ?? 'أ';
+
+        return {
           if (q['id'] != null) 'id': q['id'],
           'text': (q['text'] as String).trim(),
           'type': q['type'] ?? 'MCQ',
-          'points': double.tryParse(q['points'].toString()) ?? 1,
-          'options': q['options'],
-          'correctAnswer': q['correctAnswer'],
-          'explanation': q['explanation'],
-        }).toList(),
+          'points': (double.tryParse(q['points'].toString()) ?? 1).toInt(),
+          'options': optionsList,
+          'correctOption': correct,
+          'correctAnswer': correct,
+          if ((q['explanation']?.toString() ?? '').isNotEmpty) 'explanation': q['explanation'],
+        };
+      }).toList();
+
+      final data = {
+        'title': _titleCtrl.text.trim(),
+        if (_descCtrl.text.trim().isNotEmpty) 'description': _descCtrl.text.trim(),
+        if (_instructionsCtrl.text.trim().isNotEmpty) 'instructions': _instructionsCtrl.text.trim(),
+        'durationMinutes': duration,
+        'duration': duration,
+        'totalScore': totalMarks,
+        'totalMarks': totalMarks,
+        'passingScore': passingMarks,
+        'passingMarks': passingMarks,
+        'maxAttempts': maxAttempts,
+        if (_selectedGroupId != null && _selectedGroupId!.isNotEmpty) 'groupId': _selectedGroupId,
+        if (_selectedSubjectId != null && _selectedSubjectId!.isNotEmpty) 'subjectId': _selectedSubjectId,
+        if (_selectedTeacherId != null && _selectedTeacherId!.isNotEmpty) 'teacherId': _selectedTeacherId,
+        if (_selectedAcademicYearId != null && _selectedAcademicYearId!.isNotEmpty) 'academicYearId': _selectedAcademicYearId,
+        if (_availableFrom != null) 'availableFrom': _availableFrom!.toIso8601String(),
+        if (_availableUntil != null) 'availableUntil': _availableUntil!.toIso8601String(),
+        'isPublished': _isPublished,
+        'shuffleQuestions': _shuffleQuestions,
+        'showModelAnswers': _showModelAnswers,
+        'questions': formattedQuestions,
       };
 
       if (widget.initialExam != null) {
