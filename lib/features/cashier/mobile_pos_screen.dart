@@ -431,6 +431,7 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                           ref.invalidate(liveTransactionsProvider);
                           ref.invalidate(liveFinanceOverviewProvider);
                           ref.invalidate(liveStudentsProvider);
+                          ref.invalidate(liveMyActivityProvider);
 
                           final recNo = res?['receiptNo']?.toString() ??
                               res?['receiptNumber']?.toString() ??

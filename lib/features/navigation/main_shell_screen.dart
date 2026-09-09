@@ -88,7 +88,6 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           sessionNumber: 5,
         ),
         TeacherEarningsScreen(),
-        BrandingSettingsScreen(),
       ];
       navItems = const [
         BottomNavigationBarItem(
@@ -103,10 +102,6 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
           icon: Icon(LucideIcons.wallet),
           label: 'أرباحي',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(LucideIcons.settings),
-          label: 'الإعدادات',
-        ),
       ];
     } else if (user?.isAssistant ?? false) {
       screens = const [
@@ -114,7 +109,6 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
         AttendanceScannerScreen(),
         MobilePosScreen(),
         StudentsListScreen(),
-        BrandingSettingsScreen(),
       ];
       navItems = const [
         BottomNavigationBarItem(
@@ -132,10 +126,6 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
         BottomNavigationBarItem(
           icon: Icon(LucideIcons.users),
           label: 'الطلاب',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(LucideIcons.settings),
-          label: 'الإعدادات',
         ),
       ];
     } else {
@@ -411,7 +401,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
 
           // Section 2: Academic & Students
           _buildDrawerSectionTitle('الشؤون الأكاديمية والتعليمية'),
-          if (user?.isAdmin ?? true)
+          if (user?.isAdmin == true)
             ListTile(
               leading: const Icon(LucideIcons.graduationCap, color: Color(0xFF0EA5E9)),
               title: Text('إدارة المدرسين والمعلمين', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -462,7 +452,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               },
             ),
 
-          if (user?.isAdmin ?? true) ...[
+          if (user?.isAdmin == true) ...[
             const Divider(),
 
             // Section 3: Finance & Treasury
@@ -528,13 +518,11 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => const PlatformSettingsScreen()));
               },
             ),
-          ],
 
-          const Divider(),
+            const Divider(),
 
-          // Section 5: System & Branding
-          _buildDrawerSectionTitle('النظام وهوية السنتر'),
-          if (user?.isAdmin ?? true) ...[
+            // Section 5: System & Branding
+            _buildDrawerSectionTitle('النظام وهوية السنتر'),
             ListTile(
               leading: const Icon(LucideIcons.gauge, color: Color(0xFF10B981)),
               title: Text('الرصيد وشحن باقات الطلاب', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -563,6 +551,8 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               },
             ),
           ],
+          const Divider(),
+          _buildDrawerSectionTitle('حول النظام والأمان'),
           ListTile(
             leading: const Icon(LucideIcons.shieldCheck),
             title: Text('حماية الخزينة برمز PIN', style: GoogleFonts.cairo(fontSize: 13)),

@@ -97,8 +97,8 @@ class _AssistantProfileDetailScreenState extends ConsumerState<AssistantProfileD
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
-    final staff = _profileData?['staff'] as Map<String, dynamic>?;
-    final stats = _profileData?['stats'] as Map<String, dynamic>?;
+    final staff = (_profileData?['staff'] ?? _profileData?['user']) as Map<String, dynamic>?;
+    final stats = (_profileData?['stats'] ?? _profileData?['kpis']) as Map<String, dynamic>?;
 
     final displayName = staff?['name'] ?? widget.initialName ?? 'الموظف';
     final role = _formatRole(staff?['role'] ?? widget.initialRole);
@@ -495,7 +495,7 @@ class _AssistantProfileDetailScreenState extends ConsumerState<AssistantProfileD
   }
 
   Widget _buildCollectionsTab() {
-    final invoices = (_profileData?['recentInvoices'] as List?) ?? [];
+    final invoices = ((_profileData?['recentInvoices'] ?? _profileData?['recentTransactions']) as List?) ?? [];
     final discounts = (_profileData?['discountsList'] as List?) ?? [];
 
     if (invoices.isEmpty && discounts.isEmpty) {

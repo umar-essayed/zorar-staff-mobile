@@ -353,7 +353,7 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
 
             // Section 2: Identity Names & Subdomain
             Text(
-              'الاسم والنطاق السحابي للمنصة:',
+              'الاسم والمعرّف المخصص للمنصة:',
               style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 10),
@@ -377,10 +377,9 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                       controller: _subdomainController,
                       onChanged: _onSlugChanged,
                       decoration: InputDecoration(
-                        labelText: 'معرّف الرابط المخصص (Slug) للمنصة أو المدرس',
-                        hintText: 'مثال: al-magd أو el-farouk',
+                        labelText: 'معرّف الرابط المخصص (Slug) للمنصة أو المعلم',
+                        hintText: 'مثال: al-magd أو mr-ahmed',
                         prefixIcon: const Icon(LucideIcons.link2, size: 18),
-                        suffixText: '.eduzorar.com',
                         suffixIcon: _isCheckingSlug
                             ? const Padding(
                                 padding: EdgeInsets.all(12),
@@ -391,7 +390,7 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                                 : _isSlugAvailable == false
                                     ? const Icon(LucideIcons.alertCircle, color: Colors.red, size: 20)
                                     : null,
-                        helperText: _slugStatusMessage ?? 'الرابط الميداني: https://${_subdomainController.text.trim()}.eduzorar.com',
+                        helperText: _slugStatusMessage ?? 'معرّف المنصة أو المعلم (حروف وأرقام إنجليزية وبدون مسافات)',
                         helperMaxLines: 2,
                         helperStyle: TextStyle(
                           color: _isSlugAvailable == true

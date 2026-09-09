@@ -7,6 +7,7 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/upload_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 
 class TeacherFormDialog extends ConsumerStatefulWidget {
   final Map<String, dynamic>? teacher;
@@ -23,30 +24,25 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
   late TextEditingController _bioCtrl;
-  late TextEditingController _commissionCtrl;
-  late TextEditingController _passwordCtrl;
-
-  String? _selectedSubjectId;
-  String _commissionType = 'PERCENTAGE';
   String? _avatarUrl;
   bool _enableLoginAccount = false;
+  late TextEditingController _passwordCtrl;
   bool _obscurePassword = true;
+
+  String _commissionType = 'PERCENTAGE';
+  late TextEditingController _commissionCtrl;
+  String? _selectedSubjectId;
+  final Set<String> _selectedGrades = {};
   bool _isUploadingAvatar = false;
   bool _isSubmitting = false;
 
-  final Set<String> _selectedGrades = {};
-
   final List<String> _availableGrades = [
-    'ابتدائي',
     'أولى إعدادي',
     'ثانية إعدادي',
     'ثالثة إعدادي',
     'أولى ثانوي',
     'ثانية ثانوي',
     'ثالثة ثانوي',
-    'أولى بكالوريا',
-    'ثانية بكالوريا',
-    'ثالثة بكالوريا',
   ];
 
   @override
@@ -64,11 +60,11 @@ class _TeacherFormDialogState extends ConsumerState<TeacherFormDialog> {
 
     _commissionType = t?['commissionType'] ?? 'PERCENTAGE';
     if (_commissionType == 'PERCENTAGE') {
-      final centerPct = (t?['centerPercentage'] as num?)?.toDouble() ?? 20.0;
+      final centerPct = parseDouble(t?['centerPercentage'], 20.0);
       final teacherPct = 100.0 - centerPct;
       _commissionCtrl = TextEditingController(text: teacherPct.toStringAsFixed(0));
     } else {
-      final fee = (t?['fixedCenterFee'] as num?)?.toDouble() ?? 0.0;
+      final fee = parseDouble(t?['fixedCenterFee'], 0.0);
       _commissionCtrl = TextEditingController(text: fee.toStringAsFixed(0));
     }
 

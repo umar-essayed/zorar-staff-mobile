@@ -36,10 +36,10 @@ class AssistantDashboardScreen extends ConsumerWidget {
               // Shift Quick Status Banner
               activityAsync.when(
                 data: (activityData) {
-                  final stats = activityData?['stats'] as Map<String, dynamic>?;
-                  final cashCollected = stats?['cashCollected'] ?? 0;
-                  final invoiceCount = stats?['posInvoicesCount'] ?? 0;
-                  final scanCount = stats?['attendanceScans'] ?? 0;
+                  final stats = (activityData?['stats'] ?? activityData?['kpis']) as Map<String, dynamic>?;
+                  final cashCollected = stats?['cashCollected'] ?? stats?['totalCashCollected'] ?? 0;
+                  final invoiceCount = stats?['posInvoicesCount'] ?? stats?['transactionsCount'] ?? 0;
+                  final scanCount = stats?['attendanceScans'] ?? stats?['periodScans'] ?? stats?['todayScans'] ?? 0;
 
                   return Container(
                     padding: const EdgeInsets.all(18),
@@ -294,7 +294,8 @@ class AssistantDashboardScreen extends ConsumerWidget {
                               (group['teacherName']?.toString() ?? 'المعلم');
                           final grade = group['academicYear']?['name']?.toString() ?? '';
                           final schedule = group['schedule']?.toString() ?? 'مواعيد محددة';
-                          final studentsCount = (group['studentsCount'] ?? group['_count']?['enrollments'] ?? 0) as int;
+                          final studentsCount = parseInt(group['studentsCount'] ?? group['_count']?['students'] ?? group['_count']?['enrollments'], 0);
+                          final maxCapacity = parseInt(group['maxStudents'] ?? group['maxCapacity'], 50);
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10.0),
@@ -303,7 +304,7 @@ class AssistantDashboardScreen extends ConsumerWidget {
                               teacherName: teacherName,
                               time: '$grade • $schedule',
                               attendedCount: studentsCount,
-                              totalCount: (group['maxCapacity'] ?? 50) as int,
+                              totalCount: maxCapacity,
                               statusText: 'نشطة',
                               isLive: true,
                               brandingColor: branding.primaryColor,

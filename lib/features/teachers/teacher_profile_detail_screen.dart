@@ -9,6 +9,7 @@ import '../../core/services/branding_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 import 'teacher_form_dialog.dart';
 
 class TeacherProfileDetailScreen extends ConsumerStatefulWidget {
@@ -778,11 +779,11 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
     final t = _teacher!;
     final payouts = (t['payouts'] as List<dynamic>?) ?? [];
     final commType = t['commissionType'] ?? 'PERCENTAGE';
-    final centerPct = (t['centerPercentage'] as num?)?.toDouble() ?? 20.0;
+    final centerPct = parseDouble(t['centerPercentage'], 20.0);
     final teacherPct = 100.0 - centerPct;
-    final fixedFee = (t['fixedCenterFee'] as num?)?.toDouble() ?? 0.0;
+    final fixedFee = parseDouble(t['fixedCenterFee'], 0.0);
 
-    final totalPaid = payouts.fold<double>(0.0, (sum, p) => sum + (p['netPaid'] as num? ?? 0).toDouble());
+    final totalPaid = payouts.fold<double>(0.0, (sum, p) => sum + parseDouble(p['netPaid'], 0.0));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -883,11 +884,11 @@ class _TeacherProfileDetailScreenState extends ConsumerState<TeacherProfileDetai
           )
         else
           ...payouts.map((p) {
-            final net = (p['netPaid'] as num?)?.toDouble() ?? 0.0;
-            final total = (p['totalRevenue'] as num?)?.toDouble() ?? 0.0;
-            final center = (p['centerShare'] as num?)?.toDouble() ?? 0.0;
-            final teacherShare = (p['teacherShare'] as num?)?.toDouble() ?? 0.0;
-            final deductions = (p['deductions'] as num?)?.toDouble() ?? 0.0;
+            final net = parseDouble(p['netPaid'], 0.0);
+            final total = parseDouble(p['totalRevenue'], 0.0);
+            final center = parseDouble(p['centerShare'], 0.0);
+            final teacherShare = parseDouble(p['teacherShare'], 0.0);
+            final deductions = parseDouble(p['deductions'], 0.0);
             final paidAt = p['paidAt'] != null ? p['paidAt'].toString().split('T').first : '';
             final notes = p['notes']?.toString() ?? '';
 

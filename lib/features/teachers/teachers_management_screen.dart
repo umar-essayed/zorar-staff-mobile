@@ -9,8 +9,16 @@ import '../../core/services/branding_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../../core/utils/numeric_utils.dart';
 import 'teacher_form_dialog.dart';
 import 'teacher_profile_detail_screen.dart';
+
+String _safeSubjectName(dynamic subject) {
+  if (subject == null) return 'عام';
+  if (subject is Map) return (subject['name'] ?? 'عام').toString();
+  if (subject is String) return subject.isNotEmpty ? subject : 'عام';
+  return subject.toString();
+}
 
 class TeachersManagementScreen extends ConsumerStatefulWidget {
   const TeachersManagementScreen({super.key});
@@ -290,28 +298,31 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
             Expanded(
               child: teachersAsync.when(
                 data: (allTeachers) {
-                  // Filter by search & subject
-                  final filtered = allTeachers.where((t) {
-                    final name = (t['name'] ?? '').toString().toLowerCase();
-                    final phone = (t['phone'] ?? '').toString();
-                    final subj = (t['subject']?['name'] ?? '').toString();
+                  try {
+                    // Filter by search & subject
+                    final filtered = allTeachers.where((t) {
+                      final name = (t['name'] ?? '').toString().toLowerCase();
+                      final phone = (t['phone'] ?? '').toString();
+                      final subj = _safeSubjectName(t['subject']);
 
-                    final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery) || phone.contains(_searchQuery);
-                    final matchesSubj = _selectedSubjectFilter == 'الكل' || subj == _selectedSubjectFilter;
-                    return matchesSearch && matchesSubj;
-                  }).toList();
+                      final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery) || phone.contains(_searchQuery);
+                      final matchesSubj = _selectedSubjectFilter == 'الكل' || subj == _selectedSubjectFilter;
+                      return matchesSearch && matchesSubj;
+                    }).toList();
 
-                  // Stats Bar
-                  final totalTeachers = filtered.length;
-                  int totalGroups = 0;
-                  int totalStudents = 0;
-                  for (final t in filtered) {
-                    final groups = (t['groups'] as List<dynamic>?) ?? [];
-                    totalGroups += groups.length;
-                    for (final g in groups) {
-                      totalStudents += (g['_count']?['students'] as num? ?? 0).toInt();
+                    // Stats Bar
+                    final totalTeachers = filtered.length;
+                    int totalGroups = 0;
+                    int totalStudents = 0;
+                    for (final t in filtered) {
+                      final groups = (t['groups'] as List<dynamic>?) ?? [];
+                      totalGroups += groups.length;
+                      for (final g in groups) {
+                        if (g is Map) {
+                          totalStudents += parseInt(g['_count']?['students'] ?? g['studentsCount'], 0);
+                        }
+                      }
                     }
-                  }
 
                   return Column(
                     children: [
@@ -379,8 +390,32 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                       ),
                     ],
                   );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                } catch (e, stack) {
+                  debugPrint('TeachersManagementScreen render error: $e\n$stack');
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(LucideIcons.alertTriangle, color: Colors.orange, size: 48),
+                          const SizedBox(height: 12),
+                          Text('حدث خطأ أثناء عرض بيانات المعلمين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 8),
+                          Text('$e', textAlign: TextAlign.center, style: GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => ref.invalidate(liveTeachersProvider),
+                            icon: const Icon(LucideIcons.refreshCw, size: 16),
+                            label: const Text('إعادة تحميل'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, __) => ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
@@ -441,18 +476,18 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
               final id = t['id']?.toString() ?? '';
               final name = t['name']?.toString() ?? 'معلم';
               final phone = t['phone']?.toString() ?? '-';
-              final subject = (t['subject'] is Map ? t['subject']['name'] : null)?.toString() ?? 'عام';
+              final subject = _safeSubjectName(t['subject']);
               final groups = (t['groups'] as List<dynamic>?) ?? [];
               final bio = t['bio']?.toString() ?? '';
               final hasUser = t['user'] != null;
 
-              final centerPct = (t['centerPercentage'] as num?)?.toDouble() ?? 20.0;
+              final centerPct = parseDouble(t['centerPercentage'], 20.0);
               final teacherPct = 100.0 - centerPct;
 
               int studentsCount = 0;
               for (final g in groups) {
                 if (g is Map) {
-                  studentsCount += (g['_count']?['students'] as num? ?? 0).toInt();
+                  studentsCount += parseInt(g['_count']?['students'] ?? g['studentsCount'], 0);
                 }
               }
 
@@ -581,20 +616,22 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
   Widget _buildTeacherCard(Map<String, dynamic> t, BrandingModel branding) {
     final name = t['name'] ?? 'معلم';
     final phone = t['phone'] ?? '';
-    final subject = t['subject']?['name'] ?? 'عام';
+    final subject = _safeSubjectName(t['subject']);
     final avatarUrl = t['avatarUrl']?.toString();
     final bio = t['bio']?.toString() ?? '';
     final groups = (t['groups'] as List<dynamic>?) ?? [];
     final hasUser = t['user'] != null;
 
     final commType = t['commissionType'] ?? 'PERCENTAGE';
-    final centerPct = (t['centerPercentage'] as num?)?.toDouble() ?? 20.0;
+    final centerPct = parseDouble(t['centerPercentage'], 20.0);
     final teacherPct = 100.0 - centerPct;
-    final fixedFee = (t['fixedCenterFee'] as num?)?.toDouble() ?? 0.0;
+    final fixedFee = parseDouble(t['fixedCenterFee'], 0.0);
 
     int studentsCount = 0;
     for (final g in groups) {
-      studentsCount += (g['_count']?['students'] as num? ?? 0).toInt();
+      if (g is Map) {
+        studentsCount += parseInt(g['_count']?['students'] ?? g['studentsCount'], 0);
+      }
     }
 
     // Extract grades taught
