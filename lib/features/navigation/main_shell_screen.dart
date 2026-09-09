@@ -615,7 +615,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               );
               if (confirm == true && context.mounted) {
                 Navigator.pop(context);
-                await ref.read(authProvider.notifier).logout(context);
+                await ref.read(authProvider.notifier).logout();
               }
             },
           ),

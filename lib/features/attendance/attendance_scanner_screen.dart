@@ -9,6 +9,7 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
+import '../auth/auth_provider.dart';
 import 'emergency_session_dialog.dart';
 
 class AttendanceScannerScreen extends ConsumerStatefulWidget {
