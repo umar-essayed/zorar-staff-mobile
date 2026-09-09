@@ -382,10 +382,15 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
               // Link to Earnings
               InkWell(
                 onTap: () {
+                  final tId = _portalData?['teacher']?['id']?.toString() ?? auth.user?.teacherId;
+                  final tName = _portalData?['teacher']?['name']?.toString() ?? teacherName;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (ctx) => const TeacherEarningsScreen(),
+                      builder: (ctx) => TeacherEarningsScreen(
+                        teacherId: tId,
+                        teacherName: tName,
+                      ),
                     ),
                   );
                 },

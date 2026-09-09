@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -79,7 +80,7 @@ class UserModel {
         role: json['role'] as String? ?? 'TENANT_ADMIN',
         email: json['email'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
-        teacherId: json['teacherId'] as String?,
+        teacherId: (json['teacherId'] ?? json['teacherProfile']?['id']) as String?,
         tenantId: json['tenantId'] as String?,
         tenant: json['tenant'] as Map<String, dynamic>?,
       );
@@ -115,11 +116,13 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref? ref;
+  final Completer<void> _restoreCompleter = Completer<void>();
 
-  // Start with isLoading=true so splash screen waits for session check
   AuthNotifier([this.ref]) : super(const AuthState(isLoading: true)) {
     _loadStoredSession();
   }
+
+  Future<void> waitForSessionRestore() => _restoreCompleter.future;
 
   Future<void> _loadStoredSession() async {
     try {
@@ -142,6 +145,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       debugPrint('Error loading stored session: $e');
+    } finally {
+      if (!_restoreCompleter.isCompleted) {
+        _restoreCompleter.complete();
+      }
     }
 
     // Unauthenticated state by default (no fake bypass)
@@ -321,7 +328,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyAuthToken);
     await prefs.remove(AppConstants.keyUserData);
-    state = const AuthState();
+    state = const AuthState(isLoading: false, isAuthenticated: false, user: null);
   }
 }
 

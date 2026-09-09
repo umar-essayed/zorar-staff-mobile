@@ -71,18 +71,28 @@ class _TeacherEarningsScreenState extends ConsumerState<TeacherEarningsScreen> {
 
     // Use walletBalance from portal stats (authoritative) — fallback to sum of filtered txs
     final portalStats = (_portalStats?['stats'] as Map<String, dynamic>?) ?? {};
-    final walletBalance = parseDouble(
-      portalStats['walletBalance'] ?? portalStats['unsettledEarnings'] ?? portalStats['earnings'],
-    );
+    final rawWalletBalance = parseDouble(portalStats['walletBalance']);
+    final unsettledEarnings = parseDouble(portalStats['unsettledEarnings']);
+    final totalEarnings = parseDouble(portalStats['totalEarnings']);
     final totalRevenueCollected = parseDouble(portalStats['totalRevenueCollected']);
     final totalPaidOut = parseDouble(portalStats['totalPaidOut']);
 
-    // Fallback if portal stats not loaded
+    // Fallback if portal stats not loaded or 0
     double totalCollected = 0.0;
     for (final tx in filteredTxs) {
       totalCollected += parseDouble(tx['amount']);
     }
-    final displayBalance = walletBalance > 0 ? walletBalance : totalCollected;
+
+    double displayBalance = 0.0;
+    if (rawWalletBalance > 0) {
+      displayBalance = rawWalletBalance;
+    } else if (unsettledEarnings > 0) {
+      displayBalance = unsettledEarnings;
+    } else if (totalEarnings > 0) {
+      displayBalance = (totalEarnings - totalPaidOut).clamp(0.0, 9999999.0);
+    } else {
+      displayBalance = totalCollected;
+    }
 
     final myGroups = (groupsAsync.value ?? []).where((g) {
       if (resolvedTeacherId != null && resolvedTeacherId.isNotEmpty) {

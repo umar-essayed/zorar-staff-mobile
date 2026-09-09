@@ -22,12 +22,12 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
   Map<String, dynamic>? selectedStudentObj;
   String selectedItem = 'دفع مخصص وملاحظات (مبلغ حر)';
   String paymentMethod = 'كاش';
-  double amount = 350.0;
+  double amount = 0.0;
   double discount = 0.0;
   bool _isProcessing = false;
   bool _isCustomAmount = true;
 
-  final _customAmountCtrl = TextEditingController(text: '350');
+  final _customAmountCtrl = TextEditingController(text: '');
   final _customNotesCtrl = TextEditingController();
   String? _selectedAcademicYearId;
   String? _selectedAcademicYearName;
@@ -61,14 +61,12 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
             s['academicYearId']?.toString() == _selectedAcademicYearId ||
             (s['academicYear']?['id']?.toString() == _selectedAcademicYearId)
           ).toList();
-    if (selectedStudentObj == null && studentsList.isNotEmpty) {
-      if (widget.initialStudentCode != null && widget.initialStudentCode!.isNotEmpty) {
-        selectedStudentObj = studentsList.firstWhere(
-          (s) => (s['studentCode'] ?? s['code']) == widget.initialStudentCode,
-          orElse: () => studentsList.first,
-        );
-      } else {
-        selectedStudentObj = studentsList.first;
+    if (selectedStudentObj == null && widget.initialStudentCode != null && widget.initialStudentCode!.isNotEmpty) {
+      final matches = studentsList.where(
+        (s) => (s['studentCode'] ?? s['code'])?.toString() == widget.initialStudentCode,
+      );
+      if (matches.isNotEmpty) {
+        selectedStudentObj = matches.first;
       }
     }
 
@@ -135,49 +133,117 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
 
             // Student Selector
             Text(
-              'بيانات الطالب',
+              'بيانات الطالب والمرحلة',
               style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: branding.primaryColor.withOpacity(0.12),
-                    child: Icon(LucideIcons.user, color: branding.primaryColor),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$studentName ${studentCode.isNotEmpty ? '($studentCode)' : ''}',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        Text(
-                          groupName,
-                          style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey),
-                        ),
-                      ],
+
+            if (selectedStudentObj == null) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: branding.primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: branding.primaryColor.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _studentSearchCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'ابحث برقم الكود، اسم الطالب، أو الهاتف...',
+                        hintStyle: GoogleFonts.cairo(fontSize: 12.5),
+                        prefixIcon: const Icon(LucideIcons.search, size: 18),
+                        isDense: true,
+                        filled: true,
+                        fillColor: Theme.of(context).cardColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onSubmitted: (val) {
+                        final q = val.trim().toLowerCase();
+                        if (q.isNotEmpty) {
+                          final match = studentsList.where((s) {
+                            final code = (s['studentCode'] ?? s['code'])?.toString().toLowerCase() ?? '';
+                            final name = s['name']?.toString().toLowerCase() ?? '';
+                            final phone = s['phone']?.toString() ?? '';
+                            return code == q || name.contains(q) || phone.contains(q);
+                          }).toList();
+                          if (match.isNotEmpty) {
+                            setState(() {
+                              selectedStudentObj = match.first;
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('لم يتم العثور على طالب يطابق "$val"', style: GoogleFonts.cairo())),
+                            );
+                          }
+                        }
+                      },
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(LucideIcons.arrowRightLeft, size: 20),
-                    tooltip: 'تغيير الطالب',
-                    onPressed: () {
-                      _showStudentPickerModal(context, studentsList);
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: branding.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(LucideIcons.users, size: 18),
+                      label: Text(
+                        _selectedAcademicYearName != null
+                            ? 'اختيار الطالب من قائمة $_selectedAcademicYearName (${studentsList.length} طالب)'
+                            : 'اختيار الطالب من قائمة الطلاب (${studentsList.length} طالب)',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      onPressed: () => _showStudentPickerModal(context, studentsList),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: branding.primaryColor.withOpacity(0.35), width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: branding.primaryColor.withOpacity(0.12),
+                      child: Icon(LucideIcons.userCheck, color: branding.primaryColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$studentName ${studentCode.isNotEmpty ? '($studentCode)' : ''}',
+                            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          Text(
+                            '$groupName • $studentPhone',
+                            style: GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(LucideIcons.refreshCw, size: 18),
+                      tooltip: 'تغيير الطالب',
+                      onPressed: () {
+                        setState(() {
+                          selectedStudentObj = null;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
 
@@ -219,9 +285,11 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                       final mFee = parseDouble(gMap['monthlyFee'], 350.0);
 
                       // Check if this group has a paid monthly subscription this month
+                      final currentMonthNumber = DateTime.now().month;
                       final hasPaidMonthlyForGroup = monthlySubs.any((sub) =>
                         sub is Map &&
                         sub['isPaid'] == true &&
+                        (sub['monthNumber'] == null || sub['monthNumber'] == currentMonthNumber) &&
                         (sub['groupId']?.toString() == gId ||
                          sub['group']?['id']?.toString() == gId)
                       );
@@ -249,9 +317,8 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                   }
                 }
 
-                // 3. Available Books (filtered by student's academic year + subjects/teachers)
+                // 3. Available Books (filtered strictly by student's academic year + enrolled subjects/teachers)
                 final booksList = booksAsync.value ?? [];
-                // Gather student's teacher IDs and subject IDs from their groups
                 final studentTeacherIds = <String>{};
                 final studentSubjectIds = <String>{};
                 if (groupsList != null) {
@@ -263,31 +330,31 @@ class _MobilePosScreenState extends ConsumerState<MobilePosScreen> {
                     }
                   }
                 }
+
+                final studentYearId = selectedStudentObj?['academicYearId']?.toString() ??
+                    selectedStudentObj?['academicYear']?['id']?.toString() ??
+                    _selectedAcademicYearId;
+
                 for (final b in booksList) {
-                  // Filter: book must match student's academic year OR subject OR teacher
                   final bookYearId = b['academicYearId']?.toString();
                   final bookSubjectId = b['subjectId']?.toString();
                   final bookTeacherId = b['teacherId']?.toString();
-                  final studentYearId = selectedStudentObj?['academicYearId']?.toString() ??
-                    selectedStudentObj?['academicYear']?['id']?.toString();
 
-                  bool matchesStudent = false;
-                  // If we have filtering info, apply it
-                  if (studentTeacherIds.isNotEmpty || studentSubjectIds.isNotEmpty || studentYearId != null) {
-                    if (bookYearId != null && studentYearId != null && bookYearId == studentYearId) {
-                      matchesStudent = true;
-                    } else if (bookSubjectId != null && studentSubjectIds.contains(bookSubjectId)) {
-                      matchesStudent = true;
-                    } else if (bookTeacherId != null && studentTeacherIds.contains(bookTeacherId)) {
-                      matchesStudent = true;
-                    }
-                    // If book has no filtering fields, show it to everyone
-                    if (bookYearId == null && bookSubjectId == null && bookTeacherId == null) {
-                      matchesStudent = true;
-                    }
-                  } else {
-                    // No student selected or no group data — show all books
-                    matchesStudent = true;
+                  bool matchesStudent = true;
+
+                  // 1. Academic Year Match
+                  if (studentYearId != null && bookYearId != null && bookYearId != studentYearId) {
+                    matchesStudent = false;
+                  }
+
+                  // 2. Enrolled Subjects Match (if student is enrolled in subjects)
+                  if (studentSubjectIds.isNotEmpty && bookSubjectId != null && !studentSubjectIds.contains(bookSubjectId)) {
+                    matchesStudent = false;
+                  }
+
+                  // 3. Enrolled Teachers Match (if student is enrolled with teachers)
+                  if (studentTeacherIds.isNotEmpty && bookTeacherId != null && !studentTeacherIds.contains(bookTeacherId)) {
+                    matchesStudent = false;
                   }
 
                   if (matchesStudent) {

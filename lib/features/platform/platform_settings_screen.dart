@@ -36,6 +36,11 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
 
   Future<void> _loadInitialData() async {
     try {
+      final currentTenant = await EduApiService().getCurrentTenant();
+      if (currentTenant != null && currentTenant['platformUrl'] != null && currentTenant['platformUrl'].toString().isNotEmpty) {
+        _loadedPlatformUrl = currentTenant['platformUrl'].toString();
+      }
+
       final branding = ref.read(brandingProvider);
       final host = branding.subdomain.isNotEmpty ? branding.subdomain : 'main';
       final storefront = await EduApiService().getPublicStorefront(host);
@@ -123,7 +128,7 @@ class _PlatformSettingsScreenState extends ConsumerState<PlatformSettingsScreen>
     final branding = ref.watch(brandingProvider);
     final platformUrl = _loadedPlatformUrl.isNotEmpty
         ? _loadedPlatformUrl
-        : 'https://${branding.subdomain.isNotEmpty ? branding.subdomain : "portal"}.zoraredu.com';
+        : 'https://${branding.subdomain.isNotEmpty ? branding.subdomain : "portal"}.eduzorar.com';
 
     return Scaffold(
       appBar: AppBar(

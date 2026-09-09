@@ -54,10 +54,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('zorar_remember_me') ?? false;
     final savedPhone = prefs.getString('zorar_saved_phone');
-    if (savedPhone != null && savedPhone.isNotEmpty && mounted) {
+    final savedPass = prefs.getString('zorar_saved_password');
+    if (rememberMe && mounted) {
       setState(() {
-        _loginUserCtrl.text = savedPhone;
+        _rememberMe = true;
+        if (savedPhone != null && savedPhone.isNotEmpty) {
+          _loginUserCtrl.text = savedPhone;
+        }
+        if (savedPass != null && savedPass.isNotEmpty) {
+          _loginPassCtrl.text = savedPass;
+        }
       });
     }
   }
@@ -436,12 +444,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (success && mounted) {
       SoundService.successFeedback();
+      final prefs = await SharedPreferences.getInstance();
       if (_rememberMe) {
-        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('zorar_remember_me', true);
         await prefs.setString('zorar_saved_phone', phone);
+        await prefs.setString('zorar_saved_password', pass);
       } else {
-        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('zorar_remember_me');
         await prefs.remove('zorar_saved_phone');
+        await prefs.remove('zorar_saved_password');
       }
       Navigator.pushReplacement(
         context,

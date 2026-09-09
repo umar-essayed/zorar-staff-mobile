@@ -25,6 +25,7 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
   bool _isSaving = false;
   bool _isUploadingLogo = false;
   bool _isUploadingBanner = false;
+  bool _isSwitchingIcon = false;
 
   bool _isCheckingSlug = false;
   bool? _isSlugAvailable;
@@ -515,6 +516,63 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
 
             const SizedBox(height: 24),
 
+            // Section 4: App Launcher Icon
+            Text(
+              'أيقونة التطبيق للشاشة الرئيسية:',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'اختر مظهر أيقونة تطبيق زُرار كود المعروضة على شاشة جوالك:',
+                      style: GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildIconOption(
+                      title: 'الافتراضية - EduZorar Classic',
+                      subtitle: 'الأيقونة الرسمية لمنظومة زُرار كود التعليمية',
+                      iconColor: const Color(0xFF0143A3),
+                      alias: null,
+                      currentAlias: branding.selectedIconAlias,
+                    ),
+                    const Divider(height: 20),
+                    _buildIconOption(
+                      title: 'الأزرق الملكي - Blue Academy',
+                      subtitle: 'مظهر أكاديمي أزرق رسمي للمنصات والمراكز',
+                      iconColor: const Color(0xFF2563EB),
+                      alias: 'BlueAcademyIcon',
+                      currentAlias: branding.selectedIconAlias,
+                    ),
+                    const Divider(height: 20),
+                    _buildIconOption(
+                      title: 'الذهبي الفاخر - Gold Institute',
+                      subtitle: 'مظهر احترافي ذهبي مخصص للمعاهد الخاصة',
+                      iconColor: const Color(0xFFF59E0B),
+                      alias: 'GoldInstituteIcon',
+                      currentAlias: branding.selectedIconAlias,
+                    ),
+                    if (_isSwitchingIcon) ...[
+                      const SizedBox(height: 12),
+                      const Center(child: CircularProgressIndicator()),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
             // Dark Mode Toggle
             Card(
               child: SwitchListTile(
@@ -555,6 +613,106 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconOption({
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required String? alias,
+    required String? currentAlias,
+  }) {
+    final isSelected = alias == currentAlias;
+    return InkWell(
+      onTap: _isSwitchingIcon
+          ? null
+          : () async {
+              setState(() => _isSwitchingIcon = true);
+              SoundService.lightImpact();
+              try {
+                final success = await ref
+                    .read(brandingProvider.notifier)
+                    .updateAppIcon(alias);
+                if (mounted) {
+                  if (success) {
+                    SoundService.successFeedback();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'تم تطبيق أيقونة التطبيق بنجاح! ستظهر على شاشة جوالك الآن ✅',
+                          style: GoogleFonts.cairo(),
+                        ),
+                        backgroundColor: const Color(0xFF10B981),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'تغيير الأيقونة يحتاج إذن واجهة الهاتف أو أن مشغل التطبيقات الحالي لا يدعمها',
+                          style: GoogleFonts.cairo(),
+                        ),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تعذر تغيير الأيقونة: $e', style: GoogleFonts.cairo()),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isSwitchingIcon = false);
+              }
+            },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: iconColor.withOpacity(0.4)),
+              ),
+              child: Icon(LucideIcons.sparkles, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: isSelected ? iconColor : null,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(LucideIcons.checkCircle2, color: iconColor, size: 22)
+            else
+              const Icon(LucideIcons.circle, color: Colors.grey, size: 20),
           ],
         ),
       ),
