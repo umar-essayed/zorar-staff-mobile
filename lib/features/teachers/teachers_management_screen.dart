@@ -405,11 +405,9 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                     ),
                   ],
                 ),
-              ),
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -521,7 +519,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => TeacherProfileDetailScreen(teacherId: id, initialTeacher: t),
+                              builder: (_) => TeacherProfileDetailScreen(teacherId: id),
                             ),
                           ),
                         ),
@@ -544,7 +542,7 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                         IconButton(
                           icon: const Icon(LucideIcons.trash2, size: 18, color: Colors.redAccent),
                           tooltip: 'حذف المعلم',
-                          onPressed: () => _confirmDelete(t),
+                          onPressed: () => _confirmDeleteTeacher(t),
                         ),
                       ],
                     ),
