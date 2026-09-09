@@ -11,6 +11,7 @@ import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
 import 'online_lessons_management_screen.dart';
 import 'platform_analytics_screen.dart';
+import '../exams/exams_management_screen.dart';
 
 class OnlinePlatformScreen extends ConsumerStatefulWidget {
   const OnlinePlatformScreen({super.key});
@@ -863,6 +864,16 @@ class _OnlinePlatformScreenState extends ConsumerState<OnlinePlatformScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (c) => const PlatformAnalyticsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.fileCheck),
+            tooltip: 'مدير الامتحانات الإلكترونية',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (c) => const ExamsManagementScreen()),
               );
             },
           ),

@@ -518,7 +518,7 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
 
             // Section 4: App Launcher Icon
             Text(
-              'أيقونة التطبيق للشاشة الرئيسية:',
+              'أيقونة وهوية التطبيق الرسمية:',
               style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 10),
@@ -535,33 +535,108 @@ class _BrandingSettingsScreenState extends ConsumerState<BrandingSettingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'اختر مظهر أيقونة تطبيق زُرار كود المعروضة على شاشة جوالك:',
+                      'شعار وهوية السنتر المخصصة المعتمدة للتطبيق بالكامل:',
                       style: GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700]),
                     ),
                     const SizedBox(height: 14),
+
+                    // Center Custom Logo Option (Selected & Prioritized)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: branding.primaryColor.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: branding.primaryColor.withOpacity(0.4), width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: (branding.logoUrl != null && branding.logoUrl!.isNotEmpty)
+                                  ? Image.network(
+                                      branding.logoUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Image.asset('assets/images/zorar_icon.png', fit: BoxFit.cover),
+                                    )
+                                  : Image.asset('assets/images/zorar_icon.png', fit: BoxFit.cover),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'شعار السنتر المخصص',
+                                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'الأيقونة المعتمدة ✅',
+                                        style: GoogleFonts.cairo(fontSize: 10, color: Colors.green[800], fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  (branding.logoUrl != null && branding.logoUrl!.isNotEmpty)
+                                      ? 'شعار سنتر ${branding.centerName} معتمد ومطبق كأيقونة وهوية رئيسية للتطبيق والتقارير'
+                                      : 'لم يتم رفع شعار مخصص بعد، اضغط لرفع شعار السنتر الآن',
+                                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: branding.primaryColor,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            ),
+                            icon: const Icon(LucideIcons.uploadCloud, size: 16),
+                            label: Text(
+                              (branding.logoUrl != null && branding.logoUrl!.isNotEmpty) ? 'تغيير' : 'رفع اللوجو',
+                              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                            onPressed: _isUploadingLogo ? null : () => _pickAndUploadImage(isLogo: true),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // EduZorar Classic Fallback
                     _buildIconOption(
                       title: 'الافتراضية - EduZorar Classic',
-                      subtitle: 'الأيقونة الرسمية لمنظومة زُرار كود التعليمية',
+                      subtitle: 'الأيقونة العامة لمنظومة زُرار كود التعليمية',
                       iconColor: const Color(0xFF0143A3),
                       alias: null,
                       currentAlias: branding.selectedIconAlias,
                     ),
-                    const Divider(height: 20),
-                    _buildIconOption(
-                      title: 'الأزرق الملكي - Blue Academy',
-                      subtitle: 'مظهر أكاديمي أزرق رسمي للمنصات والمراكز',
-                      iconColor: const Color(0xFF2563EB),
-                      alias: 'BlueAcademyIcon',
-                      currentAlias: branding.selectedIconAlias,
-                    ),
-                    const Divider(height: 20),
-                    _buildIconOption(
-                      title: 'الذهبي الفاخر - Gold Institute',
-                      subtitle: 'مظهر احترافي ذهبي مخصص للمعاهد الخاصة',
-                      iconColor: const Color(0xFFF59E0B),
-                      alias: 'GoldInstituteIcon',
-                      currentAlias: branding.selectedIconAlias,
-                    ),
+
                     if (_isSwitchingIcon) ...[
                       const SizedBox(height: 12),
                       const Center(child: CircularProgressIndicator()),

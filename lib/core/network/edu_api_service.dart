@@ -944,5 +944,81 @@ class EduApiService {
       return null;
     }
   }
+
+  // ==========================================
+  // 14. Exam Management APIs
+  // ==========================================
+  Future<List<Map<String, dynamic>>> getExams({
+    String? groupId,
+    String? teacherId,
+    String? academicYearId,
+    String? search,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (groupId != null && groupId.isNotEmpty && groupId != 'الكل') queryParams['groupId'] = groupId;
+      if (teacherId != null && teacherId.isNotEmpty && teacherId != 'الكل') queryParams['teacherId'] = teacherId;
+      if (academicYearId != null && academicYearId.isNotEmpty && academicYearId != 'الكل') queryParams['academicYearId'] = academicYearId;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+      final res = await _dio.get('/exams', queryParameters: queryParams);
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getExams: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getExam(String id) async {
+    try {
+      final res = await _dio.get('/exams/$id');
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getExam: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createExam(Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.post('/exams', data: data);
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error createExam: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> updateExam(String id, Map<String, dynamic> data) async {
+    try {
+      final res = await _dio.put('/exams/$id', data: data);
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error updateExam: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteExam(String id) async {
+    try {
+      final res = await _dio.delete('/exams/$id');
+      return res.statusCode == 200 || res.statusCode == 204;
+    } catch (e) {
+      debugPrint('Error deleteExam: $e');
+      return false;
+    }
+  }
 }
 

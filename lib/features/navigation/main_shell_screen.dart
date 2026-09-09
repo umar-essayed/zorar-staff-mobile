@@ -18,6 +18,7 @@ import '../auth/auth_provider.dart';
 import '../auth/auth_screen.dart';
 import '../books/books_inventory_screen.dart';
 import '../cashier/financial_ledger_screen.dart';
+import '../exams/exams_management_screen.dart';
 import '../cashier/mobile_pos_screen.dart';
 import '../quota/quota_topup_screen.dart';
 import '../dashboard/admin_dashboard_screen.dart';
@@ -421,6 +422,14 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (ctx) => const GroupsManagementScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(LucideIcons.fileCheck, color: Color(0xFF6366F1)),
+            title: Text('مدير الامتحانات الإلكترونية', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (ctx) => const ExamsManagementScreen()));
             },
           ),
           if (!(user?.isTeacher ?? false))

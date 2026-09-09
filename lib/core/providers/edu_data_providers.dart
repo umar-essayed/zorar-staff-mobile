@@ -113,3 +113,19 @@ final liveMyActivityProvider = FutureProvider.autoDispose<Map<String, dynamic>?>
   return await EduApiService().getMyAssistantActivity(timeRange: 'today');
 });
 
+// 18. Exams Management Live Provider
+final examsSearchQueryProvider = StateProvider<String>((ref) => '');
+final examsSelectedGroupFilterProvider = StateProvider<String?>((ref) => null);
+final examsSelectedTeacherFilterProvider = StateProvider<String?>((ref) => null);
+
+final liveExamsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final search = ref.watch(examsSearchQueryProvider);
+  final groupId = ref.watch(examsSelectedGroupFilterProvider);
+  final teacherId = ref.watch(examsSelectedTeacherFilterProvider);
+  return await EduApiService().getExams(
+    search: search.isNotEmpty ? search : null,
+    groupId: groupId,
+    teacherId: teacherId,
+  );
+});
+
