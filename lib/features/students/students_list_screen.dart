@@ -8,6 +8,7 @@ import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
+import '../auth/auth_provider.dart';
 import '../cashier/mobile_pos_screen.dart';
 import 'student_detail_screen.dart';
 import 'student_form_dialog.dart';
@@ -34,6 +35,7 @@ class _StudentsListScreenState extends ConsumerState<StudentsListScreen> {
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final auth = ref.watch(authProvider);
     final studentsAsync = ref.watch(liveStudentsProvider);
 
     return Scaffold(

@@ -7,6 +7,7 @@ import '../../core/providers/edu_data_providers.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
+import '../auth/auth_provider.dart';
 import '../students/students_list_screen.dart';
 import '../teacher/live_class_cockpit_screen.dart';
 import 'group_form_dialog.dart';
@@ -26,6 +27,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
   @override
   Widget build(BuildContext context) {
     final branding = ref.watch(brandingProvider);
+    final user = ref.watch(authProvider).user;
     final groupsAsync = ref.watch(liveGroupsProvider);
     final subjectsAsync = ref.watch(liveSubjectsProvider);
     final teachersAsync = ref.watch(liveTeachersProvider);
