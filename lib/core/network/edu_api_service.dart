@@ -971,54 +971,5 @@ class EduApiService {
       return [];
     }
   }
-
-  Future<Map<String, dynamic>?> getExam(String id) async {
-    try {
-      final res = await _dio.get('/exams/$id');
-      if (res.data is Map) {
-        return Map<String, dynamic>.from(res.data);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error getExam: $e');
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> createExam(Map<String, dynamic> data) async {
-    try {
-      final res = await _dio.post('/exams', data: data);
-      if (res.data is Map) {
-        return Map<String, dynamic>.from(res.data);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error createExam: $e');
-      rethrow;
-    }
-  }
-
-  Future<Map<String, dynamic>?> updateExam(String id, Map<String, dynamic> data) async {
-    try {
-      final res = await _dio.put('/exams/$id', data: data);
-      if (res.data is Map) {
-        return Map<String, dynamic>.from(res.data);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error updateExam: $e');
-      rethrow;
-    }
-  }
-
-  Future<bool> deleteExam(String id) async {
-    try {
-      final res = await _dio.delete('/exams/$id');
-      return res.statusCode == 200 || res.statusCode == 204;
-    } catch (e) {
-      debugPrint('Error deleteExam: $e');
-      return false;
-    }
-  }
 }
 
