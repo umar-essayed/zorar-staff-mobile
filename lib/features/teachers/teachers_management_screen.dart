@@ -405,10 +405,11 @@ class _TeachersManagementScreenState extends ConsumerState<TeachersManagementScr
                     ),
                   ],
                 ),
+              ),
             ),
           ],
         ),
-    );
+      );
   }
 
   Widget _buildHorizontalScrollViewTable(List<Map<String, dynamic>> teachers, BrandingModel branding) {

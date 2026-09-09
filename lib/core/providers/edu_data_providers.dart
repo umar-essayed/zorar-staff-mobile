@@ -109,7 +109,7 @@ final liveTenantDetailsProvider = FutureProvider.autoDispose<Map<String, dynamic
 });
 
 // 17. Assistant Today's Activity & Shift Provider
-final liveMyActivityProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final liveMyActivityProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
   return await EduApiService().getMyAssistantActivity(timeRange: 'today');
 });
 

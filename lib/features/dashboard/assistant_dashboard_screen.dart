@@ -36,7 +36,7 @@ class AssistantDashboardScreen extends ConsumerWidget {
               // Shift Quick Status Banner
               activityAsync.when(
                 data: (activityData) {
-                  final stats = activityData['stats'] as Map<String, dynamic>?;
+                  final stats = activityData?['stats'] as Map<String, dynamic>?;
                   final cashCollected = stats?['cashCollected'] ?? 0;
                   final invoiceCount = stats?['posInvoicesCount'] ?? 0;
                   final scanCount = stats?['attendanceScans'] ?? 0;
