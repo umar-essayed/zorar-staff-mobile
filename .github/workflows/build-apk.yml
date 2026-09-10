@@ -52,10 +52,14 @@ jobs:
       - name: Build Signed Release APK (Universal Production)
         run: flutter build apk --release --no-tree-shake-icons
 
+      - name: Build Signed Android App Bundle (Google Play Store AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons
+
       - name: Package & Generate Checksums
         run: |
           mkdir -p output_dist
           cp build/app/outputs/flutter-apk/app-release.apk output_dist/zorar-staff-release-signed.apk
+          cp build/app/outputs/bundle/release/app-release.aab output_dist/zorar-staff-release-signed.aab
           cd output_dist
           sha256sum * > SHA256SUMS.txt
           echo "Generated Distribution Packages:"
@@ -83,17 +87,21 @@ jobs:
 
             ---
             ### 📦 ملفات التثبيت المتاحة:
-            1. 📲 **`zorar-staff-release-signed.apk` (نسخة الإنتاج الموقعة السريعة):**
-               - حزمة إنتاج رسمية موثقة وموقعة بالشهادة السحابية، محسنة بالكامل للسرعة وتقليل الحجم وجاهزة للتثبيت الفوري.
-            2. 🛡️ **`SHA256SUMS.txt`:**
+            1. 📲 **`zorar-staff-release-signed.apk` (نسخة التثبيت المباشر السريعة):**
+               - حزمة إنتاج رسمية موثقة وموقعة، جاهزة للتثبيت الفوري على أجهزة الإدارة والمساعدين.
+            2. 🏬 **`zorar-staff-release-signed.aab` (حزمة متجر Google Play Store):**
+               - حزمة Android App Bundle موجهة للرفع والنشر المباشر على Google Play Console.
+            3. 🛡️ **`SHA256SUMS.txt`:**
                - البصمات الرقمية للتحقق من سلامة وصحة الملفات.
 
             ---
             ### ✨ أبرز مميزات التحديث الميداني:
-            - 🔒 نظام حماية وقفل الخزينة وشاشة الكاشير برمز PIN الميداني.
-            - 💬 خدمة إرسال إيصالات الدفع وتنبيهات الغياب لأولياء الأمور مباشرة عبر واتساب.
-            - 📊 تصدير ملخصات الخزينة وكشوف حضور وغياب المجموعات.
-            - 🎨 دعم الوضع الليلي الكامل وتخصيص هوية وألوان السنتر مع زر التحقق من النظام.
+            - 📡 **طابور تسجيل الحضور أوفلاين (Offline Attendance Queue):** استمرار مسح وتسجيل الطلاب بدون انقطاع حتى مع انقطاع إنترنت السنتر مع مزامنة ذكية وتلقائية فور عودة الشبكة.
+            - 🎥 **سجلات المشاهدة والدروس:** متابعة نسبة إنجاز الطالب ومحاضراته المشاهدة مباشرة من شاشة بيانات الطالب.
+            - 🔒 **نظام حماية وقفل الخزينة:** تأمين الخزينة وشاشة الكاشير برمز PIN الميداني.
+            - 💬 **خدمة إرسال إيصالات الدفع:** إرسال إيصالات الدفع وتنبيهات الغياب لأولياء الأمور مباشرة عبر واتساب.
+            - 📊 **تصدير ملخصات الخزينة:** تصدير كشوف حضور وغياب المجموعات.
+            - 🎨 **هوية بصرية كاملة:** دعم الوضع الليلي الكامل وتخصيص هوية وألوان السنتر.
           files: output_dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

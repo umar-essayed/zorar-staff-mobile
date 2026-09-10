@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/network/edu_api_service.dart';
 import '../../core/providers/edu_data_providers.dart';
+import '../../core/services/offline_attendance_service.dart';
 import '../../core/services/sound_service.dart';
 import '../../core/services/whatsapp_service.dart';
 import '../../core/theme/branding_provider.dart';
@@ -49,12 +50,60 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
   String? _lastScannedCode;
   DateTime? _lastScannedTime;
 
+  int _offlineCount = 0;
+  bool _isSyncingOffline = false;
+
   @override
   void initState() {
     super.initState();
     _selectedGroupId = widget.initialGroupId;
     if (_selectedGroupId != null) {
       _fetchSessionsForGroup(_selectedGroupId!);
+    }
+    _loadOfflineCount();
+  }
+
+  Future<void> _loadOfflineCount() async {
+    final count = await OfflineAttendanceService().getCount();
+    if (mounted) {
+      setState(() => _offlineCount = count);
+      if (count > 0 && !_isSyncingOffline) {
+        _syncOfflineQueue(silent: true);
+      }
+    }
+  }
+
+  Future<void> _syncOfflineQueue({bool silent = false}) async {
+    if (_isSyncingOffline) return;
+    setState(() => _isSyncingOffline = true);
+
+    try {
+      final report = await OfflineAttendanceService().syncQueue();
+      await _loadOfflineCount();
+
+      if (mounted) {
+        if (!silent && report.total > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'تمت المزامنة بنجاح: تم رفع ${report.synced} طالب ✅ (المتبقي: $_offlineCount)',
+                style: GoogleFonts.cairo(),
+              ),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+        if (_selectedGroupId != null) {
+          ref.invalidate(liveSessionAttendanceProvider((groupId: _selectedGroupId!, sessionId: _selectedSessionId)));
+          ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync queue error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSyncingOffline = false);
+      }
     }
   }
 
@@ -151,7 +200,41 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
       // Refresh group and session attendance list
       ref.invalidate(liveSessionAttendanceProvider((groupId: _selectedGroupId!, sessionId: _selectedSessionId)));
       ref.invalidate(liveGroupAttendanceProvider(_selectedGroupId!));
+
+      // If we have offline items queued, silently trigger a sync in the background
+      if (_offlineCount > 0) {
+        _syncOfflineQueue(silent: true);
+      }
     } catch (e) {
+      bool isNetworkError = false;
+      if (e is DioException) {
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.sendTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          isNetworkError = true;
+        }
+      } else if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup') ||
+          e.toString().contains('Network is unreachable')) {
+        isNetworkError = true;
+      }
+
+      if (isNetworkError) {
+        await OfflineAttendanceService().enqueue(
+          identifier: code,
+          groupId: _selectedGroupId!,
+          sessionId: _selectedSessionId,
+        );
+        await _loadOfflineCount();
+        SoundService.warningFeedback();
+        setState(() {
+          _lastScanFeedback = 'انقطع الإنترنت! تم الحفظ في طابور الأوفلاين 📡 (المعلق: $_offlineCount)';
+          _feedbackColor = const Color(0xFFF59E0B);
+        });
+        return;
+      }
+
       String errMsg = 'فشل التسجيل: تعذر الاتصال بالخادم';
       bool isWarning = false;
 
@@ -207,6 +290,42 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
           style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
         ),
         actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: _isSyncingOffline
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(LucideIcons.cloudUpload, color: Color(0xFF38BDF8)),
+                tooltip: 'مزامنة الحضور الأوفلاين',
+                onPressed: _isSyncingOffline ? null : () => _syncOfflineQueue(silent: false),
+              ),
+              if (_offlineCount > 0)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$_offlineCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: Icon(
               _torchOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
@@ -233,6 +352,52 @@ class _AttendanceScannerScreenState extends ConsumerState<AttendanceScannerScree
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Offline Queue Banner (Shown whenever scans are waiting for sync)
+            if (_offlineCount > 0)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.cloudOff, color: Color(0xFFF59E0B), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'يوجد $_offlineCount طالب مسجلين أوفلاين بانتظار المزامنة',
+                        style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _isSyncingOffline ? null : () => _syncOfflineQueue(silent: false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF59E0B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: _isSyncingOffline
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text('مزامنة الآن',
+                              style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+
             // STEP 1: Academic Year, Subject, and Group Selection (Like Web)
             Container(
               padding: const EdgeInsets.all(14),
