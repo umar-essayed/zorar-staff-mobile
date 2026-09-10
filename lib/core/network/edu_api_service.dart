@@ -971,5 +971,47 @@ class EduApiService {
       return [];
     }
   }
+
+  // ==========================================
+  // 15. Push Notification Broadcasting APIs
+  // ==========================================
+  Future<Map<String, dynamic>?> sendNotificationBroadcast({
+    required String title,
+    required String body,
+    String type = 'GENERAL',
+    String target = 'ALL_STUDENTS',
+    String? groupId,
+    String? studentId,
+    bool isUrgent = false,
+  }) async {
+    try {
+      final res = await _dio.post('/notifications', data: {
+        'title': title,
+        'body': body,
+        'type': type,
+        'target': target,
+        if (groupId != null && groupId.isNotEmpty) 'groupId': groupId,
+        if (studentId != null && studentId.isNotEmpty) 'studentId': studentId,
+        'isUrgent': isUrgent,
+      });
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('Error sendNotificationBroadcast: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getStaffNotifications() async {
+    try {
+      final res = await _dio.get('/notifications/staff');
+      if (res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getStaffNotifications: $e');
+      return [];
+    }
+  }
 }
 

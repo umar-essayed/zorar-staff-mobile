@@ -8,6 +8,7 @@ import '../../core/services/sound_service.dart';
 import '../../core/theme/branding_provider.dart';
 import '../../core/utils/numeric_utils.dart';
 import '../auth/auth_provider.dart';
+import '../notifications/staff_broadcast_notifications_screen.dart';
 import '../quota/quota_topup_screen.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
@@ -91,27 +92,43 @@ class AdminDashboardScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(LucideIcons.activity, color: Colors.white, size: 16),
-                                const SizedBox(width: 6),
-                                Text(
-                                  financeAsync.isLoading ? 'جاري التحديث...' : 'متزامن لايف',
-                                  style: GoogleFonts.cairo(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(LucideIcons.bellRing, color: Colors.white, size: 20),
+                                tooltip: 'بث تنبيه للطلاب',
+                                onPressed: () {
+                                  SoundService.lightImpact();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const StaffBroadcastNotificationsScreen()),
+                                  );
+                                },
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
-                              ],
-                            ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(LucideIcons.activity, color: Colors.white, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      financeAsync.isLoading ? 'جاري التحديث...' : 'متزامن لايف',
+                                      style: GoogleFonts.cairo(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

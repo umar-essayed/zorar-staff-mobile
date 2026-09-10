@@ -9,6 +9,7 @@ import '../attendance/attendance_scanner_screen.dart';
 import '../attendance/emergency_session_dialog.dart';
 import '../cashier/mobile_pos_screen.dart';
 import '../cashier/shift_closing_dialog.dart';
+import '../notifications/staff_broadcast_notifications_screen.dart';
 import '../students/student_form_dialog.dart';
 
 class AssistantDashboardScreen extends ConsumerWidget {
@@ -224,6 +225,46 @@ class AssistantDashboardScreen extends ConsumerWidget {
                         showDialog(
                           context: context,
                           builder: (ctx) => const EmergencySessionDialog(),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionTile(
+                      context: context,
+                      title: 'بث تنبيه للطلاب',
+                      subtitle: 'إشعار فوري للسنتر',
+                      icon: LucideIcons.bellRing,
+                      color: const Color(0xFFE11D48),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => const StaffBroadcastNotificationsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionTile(
+                      context: context,
+                      title: 'إغلاق الشيفت',
+                      subtitle: 'تسوية الخزينة',
+                      icon: LucideIcons.lock,
+                      color: const Color(0xFF10B981),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => const ShiftClosingDialog(),
                         );
                       },
                     ),
