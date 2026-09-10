@@ -254,6 +254,8 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
                       walletBalance: walletBalance,
                       primaryColor: branding.primaryColor,
                       centerName: branding.centerName,
+                      videoWatchLogs: (student['videoWatchLogs'] as List?) ?? [],
+                      examSubmissions: (student['examSubmissions'] as List?) ?? [],
                     ),
                     _buildGroupsTab(groups, branding.primaryColor),
                     _buildFinancesTab(monthlySubs, transactions, walletBalance, branding.primaryColor, code),
@@ -280,6 +282,8 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
     required double walletBalance,
     required Color primaryColor,
     required String centerName,
+    List videoWatchLogs = const [],
+    List examSubmissions = const [],
   }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -366,6 +370,141 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
           _buildInfoTile('المدرسة المقيد بها', schoolName, LucideIcons.building2),
           _buildInfoTile('المرحلة / الصف الدراسي', gradeName, LucideIcons.graduationCap),
           const SizedBox(height: 16),
+
+          // Digital Platform & Video Watch Logs Card (سجل مشاهدات المنصة الرقمية والكويزات)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: primaryColor.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(LucideIcons.video, color: primaryColor, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'سجل مشاهدة المحاضرات الرقمية 🎥',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${videoWatchLogs.length} حصة',
+                        style: GoogleFonts.cairo(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (videoWatchLogs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'لم يسجل الطالب مشاهدات للمحاضرات على المنصة بعد.',
+                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
+                    ),
+                  )
+                else
+                  ...videoWatchLogs.take(5).map((log) {
+                    final l = log['lesson'] is Map ? log['lesson'] : {};
+                    final lTitle = l['title']?.toString() ?? 'محاضرة';
+                    final durSec = (l['durationSeconds'] as num?)?.toInt() ?? 0;
+                    final watchedSec = (log['watchedSeconds'] as num?)?.toInt() ?? 0;
+                    final isCompleted = log['isCompleted'] == true;
+                    final pct = durSec > 0 ? ((watchedSec / durSec) * 100).round().clamp(0, 100) : (isCompleted ? 100 : 0);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isCompleted
+                            ? const Color(0xFF10B981).withOpacity(0.06)
+                            : Colors.grey.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isCompleted
+                              ? const Color(0xFF10B981).withOpacity(0.2)
+                              : Colors.grey.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  lTitle,
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isCompleted
+                                      ? const Color(0xFF10B981).withOpacity(0.15)
+                                      : Colors.amber.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isCompleted ? 'حضور معتمد (40%+) ✅' : 'قيد المشاهدة ⏱️ ($pct%)',
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isCompleted ? const Color(0xFF10B981) : Colors.amber[800],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: pct / 100.0,
+                              minHeight: 4,
+                              backgroundColor: Colors.black12,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                isCompleted ? const Color(0xFF10B981) : primaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
 
           // Digital ID Card Preview Box
           Container(
